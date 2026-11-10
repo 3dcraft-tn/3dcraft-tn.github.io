@@ -1,0 +1,18 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Temporary / backup files
+*.tmp
+*.log
+*.bak
+*.base64.txt
+
+# Node & package caches
+node_modules/
+package-lock.json
+
+# Deployment caches
+.vercel
