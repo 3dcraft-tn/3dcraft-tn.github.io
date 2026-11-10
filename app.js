@@ -12,7 +12,7 @@ const Store = {
         if (data && data.content) {
           const decoded = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
           const list = JSON.parse(decoded);
-          if (Array.isArray(list)) {
+          if (Array.isArray(list) && list.length > 0) {
             this.save(list);
             return list;
           }
@@ -28,7 +28,7 @@ const Store = {
       const res = await fetch(rawUrl);
       if (res.ok) {
         const remote = await res.json();
-        if (Array.isArray(remote)) {
+        if (Array.isArray(remote) && remote.length > 0) {
           this.save(remote);
           return remote;
         }
@@ -39,12 +39,6 @@ const Store = {
     return this.getAll();
   },
   getAll() {
-    // Si l'ancien cache local contient les produits démo, on le purge
-    if (!localStorage.getItem(this.CLEARED_FLAG)) {
-      localStorage.setItem(this.KEY, '[]');
-      localStorage.setItem(this.CLEARED_FLAG, 'true');
-      return [];
-    }
     const d = localStorage.getItem(this.KEY);
     if (!d) return [];
     try {
