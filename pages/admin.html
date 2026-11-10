@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - 3D Craft</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="../assets/icon.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- ========== NAVBAR (Admin) ========== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="../index.html" class="nav-brand">
+        <img src="../assets/icon.png" alt="3D Craft Logo">
+        <div class="brand-text">
+          <span class="brand-name">3D <span>Craft</span></span>
+          <span class="brand-sub">Admin Panel</span>
+        </div>
+      </a>
+      <div class="nav-links" id="adminNav" style="display: none;">
+        <a href="../index.html">🏪 View Shop</a>
+        <a href="#" onclick="adminLogout(); return false;">🚪 Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========== LOGIN SCREEN ========== -->
+  <section class="admin-login" id="loginSection">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <h2>Admin Access</h2>
+      <p class="login-sub">Enter your password to manage products</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="adminPassword">Password</label>
+          <input
+            type="password"
+            id="adminPassword"
+            class="form-input"
+            placeholder="Enter admin password..."
+            required
+            autocomplete="off"
+          >
+        </div>
+
+        <p class="login-error" id="loginError">❌ Incorrect password. Try again.</p>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🔓 Enter Dashboard
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ========== ADMIN DASHBOARD ========== -->
+  <div class="admin-dashboard" id="adminDashboard">
+
+    <!-- Admin Header Bar -->
+    <div class="admin-header">
+      <div class="container">
+        <div class="admin-title">
+          <h2>📊 Dashboard</h2>
+          <span class="admin-badge">Admin</span>
+        </div>
+        <div class="admin-actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="publishBtn" onclick="autoSyncToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(46,125,50,.3);">🔄 Force Sync</button>
+          <button class="btn btn-dark btn-sm" onclick="exportProducts()">📥 Export</button>
+          <button class="btn btn-dark btn-sm" onclick="importProducts()">📤 Import</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <!-- Stats Cards -->
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <div class="stat-label">Total Products</div>
+          <div class="stat-value" id="statTotalProducts">0</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="stat-label">Categories</div>
+          <div class="stat-value" id="statCategories">0</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="stat-label">Featured</div>
+          <div class="stat-value" id="statFeatured">0</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="stat-label">Avg. Price</div>
+          <div class="stat-value" id="statAvgPrice">0 TND</div>
+        </div>
+      </div>
+
+      <!-- Add / Edit Product Form -->
+      <div class="admin-form-section">
+        <h3>➕ Add New Product</h3>
+
+        <form id="addProductForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="productName">Product Name *</label>
+              <input type="text" id="productName" class="form-input" placeholder="e.g. Dragon Bookend Set" required>
+            </div>
+            <div class="form-group">
+              <label for="productCategory">Category *</label>
+              <select id="productCategory" class="form-select" required>
+                <option value="">Select category...</option>
+                <option value="home-decor">🏠 Home Decor</option>
+                <option value="gaming">🎮 Gaming</option>
+                <option value="anime">⚔️ Anime & Figures</option>
+                <option value="toys">🧸 Toys & Fun</option>
+                <option value="accessories">🎧 Accessories</option>
+                <option value="tools">🔧 Tools & DIY</option>
+                <option value="gifts">🎁 Gifts & Specials</option>
+                <option value="keychains">🔑 Custom Keychains</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="productPrice">Price (TND) *</label>
+              <input type="number" id="productPrice" class="form-input" placeholder="e.g. 45.00" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+              <label for="productBadge">Badge</label>
+              <select id="productBadge" class="form-select">
+                <option value="">No badge</option>
+                <option value="new">✨ New</option>
+                <option value="popular">⭐ Popular</option>
+                <option value="sale">🔥 Sale</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="productDescription">Description</label>
+            <textarea id="productDescription" class="form-textarea" placeholder="Describe your product..." rows="3"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="productImage">Image URL (optional)</label>
+            <input type="url" id="productImage" class="form-input" placeholder="https://example.com/image.jpg">
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="productFeatured" style="width: 18px; height: 18px; accent-color: var(--primary);">
+            <label for="productFeatured" style="margin-bottom: 0; cursor: pointer;">⭐ Show in Featured Products on homepage</label>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-primary" id="formSubmitBtn">➕ Add Product</button>
+            <button type="button" class="btn btn-dark" id="cancelEditBtn" style="display: none;" onclick="cancelEdit()">✖ Cancel Edit</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Products Table -->
+      <div class="admin-table-section">
+        <div class="table-header">
+          <h3>📦 All Products</h3>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;"></th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Badge</th>
+                <th style="width: 100px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <!-- Loaded dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/admin.js"></script>
+  <script>
+    // Show admin nav after login
+    const origLoad = loadAdminDashboard;
+    const wrappedLoad = function() {
+      origLoad();
+      document.getElementById('adminNav').style.display = 'flex';
+    };
+    // Override
+    loadAdminDashboard = wrappedLoad;
+
+    // Check if already logged in on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      if (sessionStorage.getItem('3dcraft_admin') === 'true') {
+        document.getElementById('adminNav').style.display = 'flex';
+      }
+    });
+  </script>
+</body>
+</html>
