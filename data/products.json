@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "name": "ss",
+    "category": "home-decor",
+    "price": 55,
+    "badge": "new",
+    "description": "",
+    "image": "https://makerworld.bblmw.com/makerworld/model/USe8b4c411bb6f77/design/2024-11-15_9a33f4c1a06bf.jpg?x-oss-process=image/resize,w_1000/format,webp",
+    "featured": false,
+    "id": "1794277077732"
+  }
+]
