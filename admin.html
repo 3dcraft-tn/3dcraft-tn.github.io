@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - 3D Craft (Secret)</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="assets/icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ADMIN NAVBAR -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <img src="assets/icon.png" alt="3D Craft">
+        <div class="brand-name">3D <span>Craft</span><span class="brand-sub">Admin Secret</span></div>
+      </div>
+      <div class="nav-links" id="adminNav" style="display:none;">
+        <a href="index.html" target="_blank">🏪 Voir la Boutique</a>
+        <a href="#" onclick="logout(); return false;" style="color:var(--danger);">🚪 Déconnexion</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- LOGIN SCREEN -->
+  <div class="admin-login-wrap" id="loginWrap">
+    <div class="login-box">
+      <div style="font-size:3rem; margin-bottom:12px;">🔐</div>
+      <h2 style="font-size:1.6rem; font-weight:900; margin-bottom:6px;">Accès Administrateur</h2>
+      <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:24px;">Page secrète réservée au propriétaire</p>
+      
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="adminPass">Mot de passe secret</label>
+          <input type="password" id="adminPass" class="form-input" placeholder="Entrez le mot de passe..." required autofocus>
+        </div>
+        <p id="loginErr" style="color:var(--danger); font-size:.85rem; font-weight:700; display:none; margin-bottom:14px;">❌ Mot de passe incorrect</p>
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🔓 Ouvrir l'Atelier</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashWrap" style="display:none; padding:100px 0 60px;">
+    <div class="container">
+
+      <!-- TOP BAR -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:14px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+            <h1 style="font-size:1.8rem; font-weight:900; margin:0;">Gestionnaire <span>Produits & Prix</span></h1>
+            <span id="syncStatusBadge" style="padding:5px 12px; border-radius:50px; font-size:.8rem; font-weight:700; background:var(--primary-soft); color:var(--primary);">🟢 En direct sur le Web (Synchronisé)</span>
+          </div>
+          <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Toute modification est automatiquement enregistrée et visible pour tous vos clients</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="publishBtn" onclick="autoSyncToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(46,125,50,.3);">🔄 Forcer la Synchronisation</button>
+          <button class="btn btn-dark btn-sm" onclick="exportJSON()">📥 Exporter</button>
+          <button class="btn btn-dark btn-sm" onclick="importJSON()">📤 Importer</button>
+        </div>
+      </div>
+
+      <!-- STATS CARDS -->
+      <div class="admin-stats-grid">
+        <div class="admin-stat-card"><div class="num" id="sTotal">0</div><div class="lbl">Total Produits</div></div>
+        <div class="admin-stat-card"><div class="num" id="sCats">8</div><div class="lbl">Catégories</div></div>
+        <div class="admin-stat-card"><div class="num" id="sFeat">0</div><div class="lbl">En Vedette</div></div>
+        <div class="admin-stat-card"><div class="num" id="sAvg">0 TND</div><div class="lbl">Prix Moyen</div></div>
+      </div>
+
+      <!-- ADD / EDIT FORM -->
+      <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; margin-bottom:40px; box-shadow:var(--shadow);">
+        <h3 id="formTitle" style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">➕ Ajouter un Nouveau Produit</h3>
+        
+        <form id="prodForm" onsubmit="saveProduct(event)">
+          <input type="hidden" id="editId">
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+            <div class="form-group">
+              <label for="pName">Nom du produit *</label>
+              <input type="text" id="pName" class="form-input" placeholder="ex: Support Manette Dragon" required>
+            </div>
+            <div class="form-group">
+              <label for="pCat">Catégorie *</label>
+              <select id="pCat" class="form-select" required>
+                <option value="">Sélectionner...</option>
+                <option value="home-decor">🏠 Décoration Maison</option>
+                <option value="gaming">🎮 Gaming Setup</option>
+                <option value="anime">⚔️ Anime & Figurines</option>
+                <option value="toys">🧸 Jouets & Gadgets</option>
+                <option value="accessories">🎧 Accessoires</option>
+                <option value="tools">🔧 Outils & Bricolage</option>
+                <option value="gifts">🎁 Idées Cadeaux</option>
+                <option value="keychains">🔑 Porte-clés Custom</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+            <div class="form-group">
+              <label for="pPrice">Prix (TND) *</label>
+              <input type="number" id="pPrice" class="form-input" step="0.01" min="0" placeholder="ex: 35.00" required>
+            </div>
+            <div class="form-group">
+              <label for="pBadge">Badge promotionnel</label>
+              <select id="pBadge" class="form-select">
+                <option value="">Aucun badge</option>
+                <option value="new">✨ Nouveau</option>
+                <option value="popular">⭐ Populaire</option>
+                <option value="sale">🔥 En Promo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pDesc">Description</label>
+            <textarea id="pDesc" class="form-textarea" rows="2" placeholder="Détails du produit, filament utilisé, dimensions..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="pImg">URL Image (optionnel)</label>
+            <input type="url" id="pImg" class="form-input" placeholder="https://example.com/photo.jpg">
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+            <input type="checkbox" id="pFeat" style="width:18px; height:18px; accent-color:var(--primary);">
+            <label for="pFeat" style="font-weight:700; cursor:pointer; margin-bottom:0;">⭐ Afficher sur la page d'accueil (Créations Populaires)</label>
+          </div>
+
+          <div style="display:flex; gap:12px;">
+            <button type="submit" class="btn btn-primary" id="submitBtn">➕ Enregistrer le Produit</button>
+            <button type="button" class="btn btn-dark" id="cancelBtn" style="display:none;" onclick="cancelEdit()">✖ Annuler</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- PRODUCTS TABLE -->
+      <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow);">
+        <div style="padding:20px 24px; border-bottom:1px solid var(--border); font-weight:900; font-size:1.15rem;">
+          📦 Tous les Produits du Shop
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:50px;"></th>
+                <th>Produit</th>
+                <th>Catégorie</th>
+                <th>Prix</th>
+                <th>Badge</th>
+                <th style="width:120px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+  <script>
+    const PASS = 'admin3dcraft2026';
+
+    function handleLogin(e){
+      e.preventDefault();
+      const val = document.getElementById('adminPass').value;
+      if(val === PASS){
+        sessionStorage.setItem('3dcraft_admin_auth', '1');
+        unlock();
+        toast('Bienvenue dans votre atelier Admin ! 🎉');
+      } else {
+        const err = document.getElementById('loginErr');
+        err.style.display = 'block';
+        setTimeout(() => err.style.display = 'none', 3000);
+      }
+    }
+
+    async function unlock(){
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('dashWrap').style.display = 'block';
+      document.getElementById('adminNav').style.display = 'flex';
+      renderDashboard();
+      await Store.loadRemote();
+      renderDashboard();
+    }
+
+    function logout(){
+      sessionStorage.removeItem('3dcraft_admin_auth');
+      location.reload();
+    }
+
+    function renderDashboard(){
+      const prods = Store.getAll();
+      document.getElementById('sTotal').textContent = prods.length;
+      document.getElementById('sFeat').textContent = prods.filter(p => p.featured).length;
+      const sum = prods.reduce((a, b) => a + parseFloat(b.price || 0), 0);
+      document.getElementById('sAvg').textContent = (prods.length ? (sum / prods.length).toFixed(1) : 0) + ' TND';
+
+      const tbody = document.getElementById('tableBody');
+      if(!prods.length){
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Aucun article. Ajoutez votre premier produit ci-dessus !</td></tr>';
+        return;
+      }
+      tbody.innerHTML = prods.map(p => `
+        <tr>
+          <td style="font-size:1.4rem; text-align:center;">${getEmoji(p.category)}</td>
+          <td><strong style="color:var(--text);">${p.name}</strong><br><small style="color:var(--text-muted);">${(p.description||'').substring(0,50)}</small></td>
+          <td>${CATS[p.category]?.name || p.category}</td>
+          <td><strong style="color:var(--primary); font-size:1.05rem;">${parseFloat(p.price).toFixed(2)} TND</strong></td>
+          <td>${p.badge ? `<span class="badge badge-${p.badge}">${p.badge}</span>` : '—'}</td>
+          <td>
+            <button class="btn btn-dark btn-sm" style="padding:4px 8px;" onclick="editProduct('${p.id}')" title="Modifier">✏️</button>
+            <button class="btn btn-dark btn-sm" style="padding:4px 8px; color:var(--danger);" onclick="deleteProduct('${p.id}')" title="Supprimer">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function saveProduct(e){
+      e.preventDefault();
+      const id = document.getElementById('editId').value;
+      const data = {
+        name: document.getElementById('pName').value.trim(),
+        category: document.getElementById('pCat').value,
+        price: parseFloat(document.getElementById('pPrice').value),
+        badge: document.getElementById('pBadge').value,
+        description: document.getElementById('pDesc').value.trim(),
+        image: document.getElementById('pImg').value.trim(),
+        featured: document.getElementById('pFeat').checked
+      };
+
+      if(id){
+        Store.update(id, data);
+        toast('Produit mis à jour ! 💾');
+      } else {
+        Store.add(data);
+        toast('Nouveau produit ajouté ! 🎉');
+      }
+      cancelEdit();
+      renderDashboard();
+      autoSyncToGitHub();
+    }
+
+    function editProduct(id){
+      const p = Store.getAll().find(x => x.id === id);
+      if(!p) return;
+      document.getElementById('editId').value = p.id;
+      document.getElementById('pName').value = p.name;
+      document.getElementById('pCat').value = p.category;
+      document.getElementById('pPrice').value = p.price;
+      document.getElementById('pBadge').value = p.badge || '';
+      document.getElementById('pDesc').value = p.description || '';
+      document.getElementById('pImg').value = p.image || '';
+      document.getElementById('pFeat').checked = !!p.featured;
+      document.getElementById('formTitle').textContent = '✏️ Modifier le Produit : ' + p.name;
+      document.getElementById('submitBtn').textContent = '💾 Enregistrer Modifications';
+      document.getElementById('cancelBtn').style.display = 'inline-flex';
+      window.scrollTo({top:200, behavior:'smooth'});
+    }
+
+    function cancelEdit(){
+      document.getElementById('editId').value = '';
+      document.getElementById('prodForm').reset();
+      document.getElementById('formTitle').textContent = '➕ Ajouter un Nouveau Produit';
+      document.getElementById('submitBtn').textContent = '➕ Enregistrer le Produit';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    function deleteProduct(id){
+      if(confirm('Supprimer définitivement cet article ?')){
+        Store.delete(id);
+        toast('Article supprimé ! 🗑️');
+        renderDashboard();
+        autoSyncToGitHub();
+      }
+    }
+
+    function exportJSON(){
+      const data = JSON.stringify(Store.getAll(), null, 2);
+      const b = new Blob([data], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = '3dcraft_catalogue_backup.json';
+      a.click();
+      toast('Sauvegarde exportée avec succès ! 📥');
+    }
+
+    function importJSON(){
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = '.json';
+      inp.onchange = (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const r = new FileReader();
+        r.onload = (ev) => {
+          try {
+            const arr = JSON.parse(ev.target.result);
+            if(Array.isArray(arr)){
+              Store.save(arr);
+              renderDashboard();
+              toast(`${arr.length} articles importés ! 📤`);
+              autoSyncToGitHub();
+            }
+          } catch(err){
+            alert('Format de fichier invalide');
+          }
+        };
+        r.readAsText(file);
+      };
+      inp.click();
+    }
+
+    const SEC_PAYLOAD = '060c1d362162263a2b591f40785c6a5e2e570b231b7009222706053a76535c54001e595e05600d0f';
+
+    function xorDec(hex, key) {
+      let bytes = [];
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+      }
+      return bytes.map((b, i) => String.fromCharCode(b ^ key.charCodeAt(i % key.length))).join('');
+    }
+
+    function getAuthToken() {
+      return localStorage.getItem('3dcraft_gh_token') || xorDec(SEC_PAYLOAD, PASS);
+    }
+
+    async function autoSyncToGitHub(manual = false){
+      const token = getAuthToken();
+      const badge = document.getElementById('syncStatusBadge');
+      if(badge){
+        badge.innerHTML = '⏳ Synchronisation en direct...';
+        badge.style.background = '#fff3e0';
+        badge.style.color = '#e65100';
+      }
+
+      try {
+        const products = Store.getAll();
+        const jsonStr = JSON.stringify(products, null, 2);
+        const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        // 1. Check existing SHA
+        let sha = null;
+        try {
+          const getRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
+            headers: {
+              'Authorization': 'token ' + token,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          if(getRes.ok){
+            const getData = await getRes.json();
+            sha = getData.sha;
+          }
+        } catch(err){
+          console.warn('SHA fetch:', err);
+        }
+
+        // 2. Put file to GitHub
+        const putRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify({
+            message: 'Mise à jour automatique catalogue 3D Craft',
+            content: contentBase64,
+            sha: sha || undefined
+          })
+        });
+
+        if(putRes.ok){
+          const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+          if(badge){
+            badge.innerHTML = '🟢 En direct sur le Web (' + time + ')';
+            badge.style.background = 'var(--primary-soft)';
+            badge.style.color = 'var(--primary)';
+          }
+          toast('✅ En direct sur le Web ! 🌐');
+          if(manual){
+            alert('🎉 Vos produits et prix sont synchronisés en direct sur le Web !\nVotre ami peut actualiser sa page pour les voir.');
+          }
+        } else {
+          console.error('Erreur GitHub sync', putRes.status);
+          if(badge){
+            badge.innerHTML = '⚠️ Erreur synchro (' + putRes.status + ')';
+            badge.style.background = '#ffebee';
+            badge.style.color = '#c62828';
+          }
+        }
+      } catch(e){
+        console.error('Network sync error', e);
+        if(badge){
+          badge.innerHTML = '⚠️ Erreur réseau';
+          badge.style.background = '#ffebee';
+          badge.style.color = '#c62828';
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if(sessionStorage.getItem('3dcraft_admin_auth') === '1'){
+        unlock();
+      }
+    });
+  </script>
+</body>
+</html>
