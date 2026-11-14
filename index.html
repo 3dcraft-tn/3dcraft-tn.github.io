@@ -523,5 +523,131 @@
       else loadHome();
     });
   </script>
+
+  <!-- PRODUCT DETAIL & ORDER MODAL -->
+  <div class="modal-overlay" id="orderModal" onclick="if(event.target===this) closeOrderModal()">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeOrderModal()" aria-label="Fermer" title="Fermer">✕</button>
+      
+      <!-- Order Form View -->
+      <div id="modalOrderView">
+        <div class="modal-header">
+          <div class="modal-badge-row">
+            <span class="modal-cat-badge" id="modalCatBadge">🏠 Décoration</span>
+            <span class="modal-promo-badge" id="modalPromoBadge" style="display:none;"></span>
+          </div>
+          <h2 class="modal-title" id="modalTitle">Nom du Produit</h2>
+          <div class="modal-price-tag">
+            <span id="modalPrice">0.00</span> <small>TND</small>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <!-- Visual & Description -->
+          <div class="modal-product-preview">
+            <div class="modal-img-wrap" id="modalImgWrap"></div>
+            <div class="modal-desc-box">
+              <div class="modal-section-label">📋 Description & Caractéristiques :</div>
+              <p id="modalDesc" class="modal-desc-text">Description du produit...</p>
+              <div class="modal-features-pill">
+                <span>⚡ Finition 3D soignée</span>
+                <span>🌱 PLA biosourcé</span>
+                <span>📦 Emballage sécurisé</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Form -->
+          <div class="modal-form-container">
+            <div class="modal-form-title">
+              <span>🛍️ Passer Commande</span>
+              <small>Remplissez vos coordonnées pour recevoir votre article</small>
+            </div>
+
+            <form id="customerOrderForm" onsubmit="submitCustomerOrder(event)">
+              <input type="hidden" id="orderProdId">
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="orderName">Nom & Prénom *</label>
+                  <input type="text" id="orderName" class="form-input" placeholder="ex: Mohamed Trabelsi" required>
+                </div>
+                <div class="form-group">
+                  <label for="orderPhone">Numéro de Téléphone *</label>
+                  <input type="tel" id="orderPhone" class="form-input" placeholder="ex: 22 345 678" pattern="[0-9 \-+]{8,15}" required>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                  <label for="orderAddress">Adresse de Livraison & Ville *</label>
+                  <input type="text" id="orderAddress" class="form-input" placeholder="ex: 14 Rue de la Liberté, Tunis / Sousse / Sfax..." required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label for="orderQty">Quantité</label>
+                  <input type="number" id="orderQty" class="form-input" value="1" min="1" max="50" onchange="updateModalTotal()" oninput="updateModalTotal()">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="orderComment">Commentaire / Personnalisation <small style="color:var(--text-muted); font-weight:normal;">(Optionnel)</small></label>
+                <textarea id="orderComment" class="form-textarea" rows="2" placeholder="ex: Je souhaite la couleur Noir Mat, taille spéciale, prénom à graver..."></textarea>
+              </div>
+
+              <!-- Live Total Calculation -->
+              <div class="modal-total-bar">
+                <span>Total à régler :</span>
+                <span class="modal-total-amount"><strong id="modalTotalAmount">0.00</strong> TND</span>
+              </div>
+
+              <div class="modal-actions">
+                <button type="submit" class="btn btn-primary modal-submit-btn">
+                  🛍️ Confirmer la Commande
+                </button>
+                <button type="button" class="btn btn-outline modal-wa-btn" onclick="directOrderWA()">
+                  💬 Commander via WhatsApp
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success Confirmation View -->
+      <div id="modalSuccessView" style="display:none; text-align:center; padding:35px 20px;">
+        <div style="font-size:3.5rem; margin-bottom:12px;">🎉</div>
+        <h2 style="font-size:1.6rem; font-weight:900; color:var(--text); margin-bottom:8px;">Commande Enregistrée avec Succès !</h2>
+        <p style="color:var(--text-muted); font-size:1rem; max-width:440px; margin:0 auto 20px;">
+          Votre commande <strong id="successOrderRef" style="color:var(--primary);">#CMD-0000</strong> a été transmise à notre atelier.
+        </p>
+
+        <div style="background:var(--primary-soft); border:1px solid var(--primary-border); border-radius:var(--radius); padding:16px; max-width:420px; margin:0 auto 22px; text-align:left;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span style="color:var(--text-muted); font-size:.9rem;">Article :</span>
+            <strong id="successProdName" style="color:var(--text); font-size:.9rem;">-</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span style="color:var(--text-muted); font-size:.9rem;">Total :</span>
+            <strong id="successTotal" style="color:var(--primary); font-size:1.05rem;">0.00 TND</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:var(--text-muted); font-size:.9rem;">Client :</span>
+            <span id="successClient" style="color:var(--text); font-weight:600; font-size:.9rem;">-</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px; max-width:420px; margin:0 auto;">
+          <a id="successWaLink" href="#" target="_blank" class="btn btn-primary" style="background:#25D366; border-color:#25D366; font-weight:800; font-size:1rem; gap:8px;">
+            💬 Confirmer aussi sur WhatsApp
+          </a>
+          <button type="button" class="btn btn-outline" onclick="closeOrderModal()">
+            Fermer
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </body>
 </html>
