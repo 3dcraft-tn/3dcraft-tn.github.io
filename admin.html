@@ -43,130 +43,261 @@
     </div>
   </div>
 
-  <!-- DASHBOARD -->
+  <!-- DASHBOARD WRAP -->
   <div id="dashWrap" style="display:none; padding:100px 0 60px;">
     <div class="container">
 
-      <!-- TOP BAR -->
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:14px;">
-        <div>
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
-            <h1 style="font-size:1.8rem; font-weight:900; margin:0;">Gestionnaire <span>Produits & Prix</span></h1>
-            <span id="syncStatusBadge" style="padding:5px 12px; border-radius:50px; font-size:.8rem; font-weight:700; background:var(--primary-soft); color:var(--primary);">🟢 En direct sur le Web (Synchronisé)</span>
+      <!-- TOP TABS SWITCHER -->
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" id="tabBtnProducts" onclick="switchAdminTab('products')">
+          📦 Gestion Produits (<span id="sTotalTab">0</span>)
+        </button>
+        <button class="admin-tab-btn" id="tabBtnOrders" onclick="switchAdminTab('orders')">
+          🛍️ Commandes Clients <span id="sOrdersBadge" class="badge-pending-count" style="display:none;">0</span>
+        </button>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- TAB 1: PRODUCTS MANAGEMENT SECTION         -->
+      <!-- ========================================== -->
+      <div id="productsSection">
+        <!-- TOP BAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+              <h1 style="font-size:1.8rem; font-weight:900; margin:0;">Gestionnaire <span>Produits & Prix</span></h1>
+              <span id="syncStatusBadge" style="padding:5px 12px; border-radius:50px; font-size:.8rem; font-weight:700; background:var(--primary-soft); color:var(--primary);">🟢 En direct sur le Web (Synchronisé)</span>
+            </div>
+            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Toute modification est automatiquement enregistrée et visible pour tous vos clients</p>
           </div>
-          <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Toute modification est automatiquement enregistrée et visible pour tous vos clients</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="publishBtn" onclick="autoSyncToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(46,125,50,.3);">🔄 Forcer la Synchronisation</button>
+            <button class="btn btn-dark btn-sm" onclick="exportJSON()">📥 Exporter</button>
+            <button class="btn btn-dark btn-sm" onclick="importJSON()">📤 Importer</button>
+          </div>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" id="publishBtn" onclick="autoSyncToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(46,125,50,.3);">🔄 Forcer la Synchronisation</button>
-          <button class="btn btn-dark btn-sm" onclick="exportJSON()">📥 Exporter</button>
-          <button class="btn btn-dark btn-sm" onclick="importJSON()">📤 Importer</button>
+
+        <!-- STATS CARDS -->
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card"><div class="num" id="sTotal">0</div><div class="lbl">Total Produits</div></div>
+          <div class="admin-stat-card"><div class="num" id="sCats">8</div><div class="lbl">Catégories</div></div>
+          <div class="admin-stat-card"><div class="num" id="sFeat">0</div><div class="lbl">En Vedette</div></div>
+          <div class="admin-stat-card"><div class="num" id="sAvg">0 TND</div><div class="lbl">Prix Moyen</div></div>
         </div>
-      </div>
 
-      <!-- STATS CARDS -->
-      <div class="admin-stats-grid">
-        <div class="admin-stat-card"><div class="num" id="sTotal">0</div><div class="lbl">Total Produits</div></div>
-        <div class="admin-stat-card"><div class="num" id="sCats">8</div><div class="lbl">Catégories</div></div>
-        <div class="admin-stat-card"><div class="num" id="sFeat">0</div><div class="lbl">En Vedette</div></div>
-        <div class="admin-stat-card"><div class="num" id="sAvg">0 TND</div><div class="lbl">Prix Moyen</div></div>
-      </div>
-
-      <!-- ADD / EDIT FORM -->
-      <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; margin-bottom:40px; box-shadow:var(--shadow);">
-        <h3 id="formTitle" style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">➕ Ajouter un Nouveau Produit</h3>
-        
-        <form id="prodForm" onsubmit="saveProduct(event)">
-          <input type="hidden" id="editId">
+        <!-- ADD / EDIT FORM -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; margin-bottom:40px; box-shadow:var(--shadow);">
+          <h3 id="formTitle" style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">➕ Ajouter un Nouveau Produit</h3>
           
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
-            <div class="form-group">
-              <label for="pName">Nom du produit *</label>
-              <input type="text" id="pName" class="form-input" placeholder="ex: Support Manette Dragon" required>
+          <form id="prodForm" onsubmit="saveProduct(event)">
+            <input type="hidden" id="editId">
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+              <div class="form-group">
+                <label for="pName">Nom du produit *</label>
+                <input type="text" id="pName" class="form-input" placeholder="ex: Support Manette Dragon" required>
+              </div>
+              <div class="form-group">
+                <label for="pCat">Catégorie *</label>
+                <select id="pCat" class="form-select" required>
+                  <option value="">Sélectionner...</option>
+                  <option value="home-decor">🏠 Décoration Maison</option>
+                  <option value="gaming">🎮 Gaming Setup</option>
+                  <option value="anime">⚔️ Anime & Figurines</option>
+                  <option value="toys">🧸 Jouets & Gadgets</option>
+                  <option value="accessories">🎧 Accessoires</option>
+                  <option value="tools">🔧 Outils & Bricolage</option>
+                  <option value="gifts">🎁 Idées Cadeaux</option>
+                  <option value="keychains">🔑 Porte-clés Custom</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="pCat">Catégorie *</label>
-              <select id="pCat" class="form-select" required>
-                <option value="">Sélectionner...</option>
-                <option value="home-decor">🏠 Décoration Maison</option>
-                <option value="gaming">🎮 Gaming Setup</option>
-                <option value="anime">⚔️ Anime & Figurines</option>
-                <option value="toys">🧸 Jouets & Gadgets</option>
-                <option value="accessories">🎧 Accessoires</option>
-                <option value="tools">🔧 Outils & Bricolage</option>
-                <option value="gifts">🎁 Idées Cadeaux</option>
-                <option value="keychains">🔑 Porte-clés Custom</option>
-              </select>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+              <div class="form-group">
+                <label for="pPrice">Prix (TND) *</label>
+                <input type="number" id="pPrice" class="form-input" step="0.01" min="0" placeholder="ex: 35.00" required>
+              </div>
+              <div class="form-group">
+                <label for="pBadge">Badge promotionnel</label>
+                <select id="pBadge" class="form-select">
+                  <option value="">Aucun badge</option>
+                  <option value="new">✨ New (Nouveau)</option>
+                  <option value="sale">🔥 Sale (Promotion)</option>
+                  <option value="popular">⭐ Popular (Populaire)</option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
             <div class="form-group">
-              <label for="pPrice">Prix (TND) *</label>
-              <input type="number" id="pPrice" class="form-input" step="0.01" min="0" placeholder="ex: 35.00" required>
+              <label for="pDesc">Description courte</label>
+              <textarea id="pDesc" class="form-textarea" rows="2" placeholder="Détails du produit, filament utilisé, dimensions..."></textarea>
             </div>
+
             <div class="form-group">
-              <label for="pBadge">Badge promotionnel</label>
-              <select id="pBadge" class="form-select">
-                <option value="">Aucun badge</option>
-                <option value="new">✨ Nouveau</option>
-                <option value="popular">⭐ Populaire</option>
-                <option value="sale">🔥 En Promo</option>
-              </select>
+              <label for="pImg">URL de l'image (optionnel - sinon une icône 3D sera affichée)</label>
+              <input type="url" id="pImg" class="form-input" placeholder="https://example.com/photo.jpg">
             </div>
+
+            <div style="margin-bottom:20px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600;">
+                <input type="checkbox" id="pFeat" style="width:18px; height:18px; accent-color:var(--primary);">
+                Mettre en avant sur la page d'accueil (Section Vedette)
+              </label>
+            </div>
+
+            <div style="display:flex; gap:12px;">
+              <button type="submit" id="submitBtn" class="btn btn-primary">➕ Enregistrer le Produit</button>
+              <button type="button" id="cancelBtn" class="btn btn-dark" style="display:none;" onclick="cancelEdit()">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- PRODUCTS TABLE -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; box-shadow:var(--shadow);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+            <h3 style="font-size:1.3rem; font-weight:800; margin:0;">📋 Catalogue Actuel</h3>
+            <input type="text" id="searchInput" oninput="filterTable(this.value)" placeholder="🔍 Rechercher un produit..." class="form-input" style="max-width:260px; padding:8px 14px;">
           </div>
 
-          <div class="form-group">
-            <label for="pDesc">Description</label>
-            <textarea id="pDesc" class="form-textarea" rows="2" placeholder="Détails du produit, filament utilisé, dimensions..."></textarea>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Aperçu</th>
+                  <th>Produit</th>
+                  <th>Catégorie</th>
+                  <th>Prix</th>
+                  <th>Badge</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
           </div>
-
-          <div class="form-group">
-            <label for="pImg">URL Image (optionnel)</label>
-            <input type="url" id="pImg" class="form-input" placeholder="https://example.com/photo.jpg">
-          </div>
-
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
-            <input type="checkbox" id="pFeat" style="width:18px; height:18px; accent-color:var(--primary);">
-            <label for="pFeat" style="font-weight:700; cursor:pointer; margin-bottom:0;">⭐ Afficher sur la page d'accueil (Créations Populaires)</label>
-          </div>
-
-          <div style="display:flex; gap:12px;">
-            <button type="submit" class="btn btn-primary" id="submitBtn">➕ Enregistrer le Produit</button>
-            <button type="button" class="btn btn-dark" id="cancelBtn" style="display:none;" onclick="cancelEdit()">✖ Annuler</button>
-          </div>
-        </form>
+        </div>
       </div>
 
-      <!-- PRODUCTS TABLE -->
-      <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow);">
-        <div style="padding:20px 24px; border-bottom:1px solid var(--border); font-weight:900; font-size:1.15rem;">
-          📦 Tous les Produits du Shop
+      <!-- ========================================== -->
+      <!-- TAB 2: ORDERS MANAGEMENT SECTION           -->
+      <!-- ========================================== -->
+      <div id="ordersSection" style="display:none;">
+        <!-- ORDERS TOP BAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <h1 style="font-size:1.8rem; font-weight:900; margin:0 0 4px 0;">Gestion des <span>Commandes Clients</span></h1>
+            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Consultez les commandes, contactez vos clients et gérez l'état de fabrication et livraison</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="openManualOrderModal()" style="font-weight:800;">➕ Ajouter Commande Manuelle</button>
+            <button class="btn btn-dark btn-sm" onclick="exportOrdersJSON()">📥 Exporter Commandes</button>
+            <button class="btn btn-dark btn-sm" onclick="clearOrdersHistory()" style="color:var(--danger);">🗑️ Vider</button>
+          </div>
         </div>
-        <div style="overflow-x:auto;">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th style="width:50px;"></th>
-                <th>Produit</th>
-                <th>Catégorie</th>
-                <th>Prix</th>
-                <th>Badge</th>
-                <th style="width:120px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-          </table>
+
+        <!-- ORDERS STATS -->
+        <div class="admin-stats-grid" style="margin-bottom:25px;">
+          <div class="admin-stat-card"><div class="num" id="ordStatTotal">0</div><div class="lbl">Total Commandes</div></div>
+          <div class="admin-stat-card"><div class="num" id="ordStatPending" style="color:#d97706;">0</div><div class="lbl">⏳ En Attente</div></div>
+          <div class="admin-stat-card"><div class="num" id="ordStatProcessing" style="color:#0284c7;">0</div><div class="lbl">🛠️ En Préparation</div></div>
+          <div class="admin-stat-card"><div class="num" id="ordStatDelivered" style="color:#16a34a;">0</div><div class="lbl">✅ Livrées</div></div>
+          <div class="admin-stat-card"><div class="num" id="ordStatRevenue" style="color:var(--primary);">0.00 TND</div><div class="lbl">Chiffre d'Affaires</div></div>
+        </div>
+
+        <!-- FILTERS & SEARCH BAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; background:#fff; padding:16px 20px; border-radius:12px; border:1px solid var(--border);">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="filter-btn active" id="fAll" onclick="filterOrders('all', this)">Toutes (<span id="cntAll">0</span>)</button>
+            <button class="filter-btn" id="fPending" onclick="filterOrders('pending', this)">⏳ En attente (<span id="cntPending">0</span>)</button>
+            <button class="filter-btn" id="fProcessing" onclick="filterOrders('processing', this)">🛠️ En préparation (<span id="cntProcessing">0</span>)</button>
+            <button class="filter-btn" id="fShipping" onclick="filterOrders('shipping', this)">🚚 En livraison (<span id="cntShipping">0</span>)</button>
+            <button class="filter-btn" id="fDelivered" onclick="filterOrders('delivered', this)">✅ Livrées (<span id="cntDelivered">0</span>)</button>
+            <button class="filter-btn" id="fCancelled" onclick="filterOrders('cancelled', this)">❌ Annulées (<span id="cntCancelled">0</span>)</button>
+          </div>
+          <input type="text" id="orderSearchInput" oninput="searchOrders(this.value)" placeholder="🔍 Rechercher client, tél, article..." class="form-input" style="max-width:260px; padding:7px 12px;">
+        </div>
+
+        <!-- ORDERS LIST CONTAINER -->
+        <div id="ordersContainer">
+          <!-- Dynamically populated -->
         </div>
       </div>
 
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- MANUAL ORDER MODAL -->
+  <div class="modal-overlay" id="manualOrderModal" onclick="if(event.target===this) closeManualOrderModal()">
+    <div class="modal-card" style="max-width:540px;">
+      <button class="modal-close-btn" onclick="closeManualOrderModal()">✕</button>
+      <h3 style="font-size:1.3rem; font-weight:900; margin-bottom:16px;">➕ Ajouter une Commande Manuelle</h3>
+      <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:18px;">Enregistrez une commande reçue par téléphone, WhatsApp ou Instagram.</p>
+
+      <form id="manualOrderForm" onsubmit="saveManualOrder(event)">
+        <div class="form-group">
+          <label for="mProdSelect">Sélectionner le Produit *</label>
+          <select id="mProdSelect" class="form-select" onchange="onManualProductSelect()" required></select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mPrice">Prix Unitaire (TND) *</label>
+            <input type="number" step="0.01" min="0" id="mPrice" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label for="mQty">Quantité *</label>
+            <input type="number" min="1" id="mQty" class="form-input" value="1" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mClientName">Nom du Client *</label>
+            <input type="text" id="mClientName" class="form-input" placeholder="ex: Ahmed Ben Ali" required>
+          </div>
+          <div class="form-group">
+            <label for="mClientPhone">Téléphone *</label>
+            <input type="tel" id="mClientPhone" class="form-input" placeholder="ex: 22 123 456" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="mClientAddr">Adresse de Livraison *</label>
+          <input type="text" id="mClientAddr" class="form-input" placeholder="ex: Sousse Ville, Rue Habib Bourguiba" required>
+        </div>
+
+        <div class="form-group">
+          <label for="mClientNotes">Remarques / Personnalisation</label>
+          <textarea id="mClientNotes" class="form-textarea" rows="2" placeholder="Couleur, taille, personnalisation..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="mStatus">Statut initial</label>
+          <select id="mStatus" class="form-select">
+            <option value="pending">⏳ En attente</option>
+            <option value="processing">🛠️ En préparation 3D</option>
+            <option value="shipping">🚚 En cours de livraison</option>
+            <option value="delivered">✅ Livrée & Payée</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">💾 Enregistrer la Commande</button>
+          <button type="button" class="btn btn-outline" onclick="closeManualOrderModal()">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
 
   <script src="app.js"></script>
   <script>
     const PASS = 'admin3dcraft2026';
+    let currentAdminTab = 'products';
+    let currentOrderFilter = 'all';
+    let currentOrderSearch = '';
 
     function handleLogin(e){
       e.preventDefault();
@@ -187,8 +318,10 @@
       document.getElementById('dashWrap').style.display = 'block';
       document.getElementById('adminNav').style.display = 'flex';
       renderDashboard();
+      renderOrdersDashboard();
       await Store.loadRemote();
       renderDashboard();
+      renderOrdersDashboard();
     }
 
     function logout(){
@@ -196,9 +329,35 @@
       location.reload();
     }
 
+    function switchAdminTab(tab){
+      currentAdminTab = tab;
+      const btnProds = document.getElementById('tabBtnProducts');
+      const btnOrders = document.getElementById('tabBtnOrders');
+      const secProds = document.getElementById('productsSection');
+      const secOrders = document.getElementById('ordersSection');
+
+      if(tab === 'products'){
+        btnProds.classList.add('active');
+        btnOrders.classList.remove('active');
+        secProds.style.display = 'block';
+        secOrders.style.display = 'none';
+        renderDashboard();
+      } else {
+        btnProds.classList.remove('active');
+        btnOrders.classList.add('active');
+        secProds.style.display = 'none';
+        secOrders.style.display = 'block';
+        renderOrdersDashboard();
+      }
+    }
+
+    // ==========================================
+    // PRODUCTS MANAGEMENT
+    // ==========================================
     function renderDashboard(){
       const prods = Store.getAll();
       document.getElementById('sTotal').textContent = prods.length;
+      document.getElementById('sTotalTab').textContent = prods.length;
       document.getElementById('sFeat').textContent = prods.filter(p => p.featured).length;
       const sum = prods.reduce((a, b) => a + parseFloat(b.price || 0), 0);
       document.getElementById('sAvg').textContent = (prods.length ? (sum / prods.length).toFixed(1) : 0) + ' TND';
@@ -282,6 +441,14 @@
       }
     }
 
+    function filterTable(val){
+      const q = val.toLowerCase().trim();
+      const rows = document.querySelectorAll('#tableBody tr');
+      rows.forEach(r => {
+        r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+
     function exportJSON(){
       const data = JSON.stringify(Store.getAll(), null, 2);
       const b = new Blob([data], {type:'application/json'});
@@ -318,6 +485,265 @@
       inp.click();
     }
 
+    // ==========================================
+    // ORDERS MANAGEMENT
+    // ==========================================
+    function renderOrdersDashboard(){
+      const orders = OrderStore.getAll();
+      const pendingCount = orders.filter(o => o.status === 'pending').length;
+      const processingCount = orders.filter(o => o.status === 'processing').length;
+      const shippingCount = orders.filter(o => o.status === 'shipping').length;
+      const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+      const cancelledCount = orders.filter(o => o.status === 'cancelled').length;
+
+      // Badges & Counters
+      const badgeOrders = document.getElementById('sOrdersBadge');
+      if (badgeOrders) {
+        badgeOrders.textContent = pendingCount;
+        badgeOrders.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+      }
+
+      document.getElementById('ordStatTotal').textContent = orders.length;
+      document.getElementById('ordStatPending').textContent = pendingCount;
+      document.getElementById('ordStatProcessing').textContent = processingCount;
+      document.getElementById('ordStatDelivered').textContent = deliveredCount;
+
+      const revenue = orders
+        .filter(o => o.status !== 'cancelled')
+        .reduce((sum, o) => sum + parseFloat(o.totalPrice || 0), 0);
+      document.getElementById('ordStatRevenue').textContent = revenue.toFixed(2) + ' TND';
+
+      // Filter Counts
+      document.getElementById('cntAll').textContent = orders.length;
+      document.getElementById('cntPending').textContent = pendingCount;
+      document.getElementById('cntProcessing').textContent = processingCount;
+      document.getElementById('cntShipping').textContent = shippingCount;
+      document.getElementById('cntDelivered').textContent = deliveredCount;
+      document.getElementById('cntCancelled').textContent = cancelledCount;
+
+      // Filter & Search List
+      let displayed = orders;
+      if (currentOrderFilter !== 'all') {
+        displayed = displayed.filter(o => o.status === currentOrderFilter);
+      }
+      if (currentOrderSearch) {
+        const q = currentOrderSearch.toLowerCase();
+        displayed = displayed.filter(o => 
+          (o.id && o.id.toLowerCase().includes(q)) ||
+          (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+          (o.customerPhone && o.customerPhone.toLowerCase().includes(q)) ||
+          (o.customerAddress && o.customerAddress.toLowerCase().includes(q)) ||
+          (o.productName && o.productName.toLowerCase().includes(q)) ||
+          (o.customerNotes && o.customerNotes.toLowerCase().includes(q))
+        );
+      }
+
+      const container = document.getElementById('ordersContainer');
+      if (!displayed.length) {
+        container.innerHTML = `
+          <div style="background:#fff; border:1px solid var(--border); border-radius:14px; text-align:center; padding:50px 20px; color:var(--text-muted);">
+            <div style="font-size:3rem; margin-bottom:10px;">📭</div>
+            <h3 style="font-size:1.2rem; font-weight:800; color:var(--text); margin-bottom:6px;">Aucune commande trouvée</h3>
+            <p style="font-size:.9rem; max-width:440px; margin:0 auto 16px;">Les commandes passées par vos clients depuis la boutique apparaîtront ici.</p>
+            <button class="btn btn-primary btn-sm" onclick="openManualOrderModal()">➕ Créer une Commande Manuelle</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = displayed.map(o => {
+        const d = new Date(o.date || o.createdAt);
+        const dateStr = isNaN(d) ? '' : d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '');
+        const waPhone = cleanPhone.startsWith('216') ? cleanPhone : ('216' + cleanPhone);
+
+        const waContactMsg = encodeURIComponent(
+          `Bonjour ${o.customerName || 'Client'} ! 👋\n` +
+          `3D Craft à votre service concernant votre commande *${o.id}* :\n` +
+          `- Article : ${o.quantity || 1}x ${o.productName}\n` +
+          `- Montant : ${o.totalPrice} TND\n` +
+          `- Statut actuel : ${getStatusLabel(o.status)}\n\n` +
+          `Pouvez-vous nous confirmer votre disponibilité pour la livraison ?`
+        );
+
+        return `
+          <div class="order-card">
+            <div class="order-head-row">
+              <div class="order-ref">
+                <span style="color:var(--primary);">#${o.id}</span>
+                <span class="order-date">📅 ${dateStr}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:.82rem; font-weight:700; color:var(--text-muted);">Statut :</label>
+                <select class="order-status-select ${o.status}" onchange="changeOrderStatus('${o.id}', this.value)">
+                  <option value="pending" ${o.status==='pending'?'selected':''}>⏳ En attente</option>
+                  <option value="processing" ${o.status==='processing'?'selected':''}>🛠️ En préparation 3D</option>
+                  <option value="shipping" ${o.status==='shipping'?'selected':''}>🚚 En cours de livraison</option>
+                  <option value="delivered" ${o.status==='delivered'?'selected':''}>✅ Livrée & Payée</option>
+                  <option value="cancelled" ${o.status==='cancelled'?'selected':''}>❌ Annulée</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="order-grid-details">
+              <div class="order-prod-box">
+                <div style="font-size:.76rem; font-weight:800; color:var(--primary); text-transform:uppercase; margin-bottom:4px;">📦 Produit Commandé</div>
+                <div style="font-size:1.05rem; font-weight:800; color:var(--text); margin-bottom:4px;">${o.productName}</div>
+                <div style="font-size:.85rem; color:var(--text-muted); margin-bottom:6px;">Quantité : <strong>${o.quantity || 1}</strong> × ${parseFloat(o.productPrice || 0).toFixed(2)} TND</div>
+                <div style="font-size:1.15rem; font-weight:900; color:var(--primary);">Total : ${parseFloat(o.totalPrice || 0).toFixed(2)} TND</div>
+              </div>
+
+              <div class="order-client-box">
+                <div style="font-size:.76rem; font-weight:800; color:var(--primary); text-transform:uppercase; margin-bottom:4px;">👤 Informations Client</div>
+                <div style="font-size:.95rem; font-weight:700; color:var(--text); margin-bottom:3px;">${o.customerName || 'Non renseigné'}</div>
+                <div style="font-size:.88rem; color:var(--text); margin-bottom:3px;">
+                  📞 Téléphone : <a href="tel:${o.customerPhone}" style="color:var(--primary); font-weight:700;">${o.customerPhone || '—'}</a>
+                </div>
+                <div style="font-size:.88rem; color:var(--text-muted); margin-bottom:6px;">
+                  📍 Adresse : <strong>${o.customerAddress || 'Non renseignée'}</strong>
+                </div>
+                ${o.customerNotes ? `
+                  <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; font-size:.84rem; color:var(--text);">
+                    🎨 <strong>Remarques / Couleur :</strong> ${o.customerNotes}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="order-foot-row">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="https://wa.me/${waPhone}?text=${waContactMsg}" target="_blank" class="btn btn-sm" style="background:#25D366; color:#fff; font-weight:700;">
+                  💬 Discuter sur WhatsApp
+                </a>
+                <a href="tel:${o.customerPhone}" class="btn btn-dark btn-sm">
+                  📞 Appeler
+                </a>
+              </div>
+              <button class="btn btn-dark btn-sm" onclick="deleteOrder('${o.id}')" style="color:var(--danger);" title="Supprimer la commande">
+                🗑️ Supprimer
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getStatusLabel(s){
+      switch(s){
+        case 'pending': return 'En attente de confirmation ⏳';
+        case 'processing': return 'En cours de fabrication 3D 🛠️';
+        case 'shipping': return 'En cours d\'acheminement / livraison 🚚';
+        case 'delivered': return 'Livrée avec succès ✅';
+        case 'cancelled': return 'Annulée ❌';
+        default: return s;
+      }
+    }
+
+    function changeOrderStatus(id, newStatus){
+      OrderStore.updateStatus(id, newStatus);
+      toast('Statut de la commande #' + id + ' mis à jour ! 🔄');
+      renderOrdersDashboard();
+    }
+
+    function deleteOrder(id){
+      if(confirm('Supprimer définitivement la commande #' + id + ' ?')){
+        OrderStore.delete(id);
+        toast('Commande supprimée ! 🗑️');
+        renderOrdersDashboard();
+      }
+    }
+
+    function filterOrders(filter, btn){
+      currentOrderFilter = filter;
+      document.querySelectorAll('#ordersSection .filter-btn').forEach(b => b.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+      renderOrdersDashboard();
+    }
+
+    function searchOrders(val){
+      currentOrderSearch = val.trim();
+      renderOrdersDashboard();
+    }
+
+    function exportOrdersJSON(){
+      const data = JSON.stringify(OrderStore.getAll(), null, 2);
+      const b = new Blob([data], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = '3dcraft_commandes_backup.json';
+      a.click();
+      toast('Export des commandes réussi ! 📥');
+    }
+
+    function clearOrdersHistory(){
+      if(confirm('Voulez-vous vraiment effacer toutes les commandes terminées ou l\'historique ?')){
+        OrderStore.save([]);
+        toast('Historique des commandes vidé !');
+        renderOrdersDashboard();
+      }
+    }
+
+    // Manual order creation
+    function openManualOrderModal(){
+      const prods = Store.getAll();
+      const select = document.getElementById('mProdSelect');
+      if(!prods.length){
+        alert('Veuillez d\'abord ajouter au moins un produit dans le catalogue.');
+        return;
+      }
+      select.innerHTML = prods.map(p => `<option value="${p.id}" data-price="${p.price}">${p.name} (${parseFloat(p.price).toFixed(2)} TND)</option>`).join('');
+      onManualProductSelect();
+      document.getElementById('manualOrderModal').classList.add('active');
+    }
+
+    function closeManualOrderModal(){
+      document.getElementById('manualOrderModal').classList.remove('active');
+      document.getElementById('manualOrderForm').reset();
+    }
+
+    function onManualProductSelect(){
+      const select = document.getElementById('mProdSelect');
+      const opt = select.options[select.selectedIndex];
+      if(opt){
+        document.getElementById('mPrice').value = opt.getAttribute('data-price') || '0';
+      }
+    }
+
+    function saveManualOrder(e){
+      e.preventDefault();
+      const select = document.getElementById('mProdSelect');
+      const prodId = select.value;
+      const prod = Store.getAll().find(x => x.id === prodId);
+      if(!prod) return;
+
+      const price = parseFloat(document.getElementById('mPrice').value);
+      const qty = parseInt(document.getElementById('mQty').value, 10) || 1;
+      const total = (price * qty).toFixed(2);
+
+      const order = {
+        productId: prod.id,
+        productName: prod.name,
+        productPrice: price,
+        productCategory: prod.category,
+        productImage: prod.image || '',
+        quantity: qty,
+        totalPrice: total,
+        customerName: document.getElementById('mClientName').value.trim(),
+        customerPhone: document.getElementById('mClientPhone').value.trim(),
+        customerAddress: document.getElementById('mClientAddr').value.trim(),
+        customerNotes: document.getElementById('mClientNotes').value.trim(),
+        status: document.getElementById('mStatus').value || 'pending'
+      };
+
+      OrderStore.add(order);
+      closeManualOrderModal();
+      toast('Commande manuelle ajoutée ! 🎉');
+      renderOrdersDashboard();
+    }
+
+    // ==========================================
+    // GITHUB SYNCHRONIZATION
+    // ==========================================
     const SEC_PAYLOAD = '060c1d362162263a2b591f40785c6a5e2e570b231b7009222706053a76535c54001e595e05600d0f';
 
     function xorDec(hex, key) {
@@ -346,7 +772,6 @@
         const jsonStr = JSON.stringify(products, null, 2);
         const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
 
-        // 1. Check existing SHA
         let sha = null;
         try {
           const getRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
@@ -363,7 +788,6 @@
           console.warn('SHA fetch:', err);
         }
 
-        // 2. Put file to GitHub
         const putRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
           method: 'PUT',
           headers: {
@@ -387,10 +811,9 @@
           }
           toast('✅ En direct sur le Web ! 🌐');
           if(manual){
-            alert('🎉 Vos produits et prix sont synchronisés en direct sur le Web !\nVotre ami peut actualiser sa page pour les voir.');
+            alert('🎉 Vos produits et prix sont synchronisés en direct sur le Web !');
           }
         } else {
-          console.error('Erreur GitHub sync', putRes.status);
           if(badge){
             badge.innerHTML = '⚠️ Erreur synchro (' + putRes.status + ')';
             badge.style.background = '#ffebee';
