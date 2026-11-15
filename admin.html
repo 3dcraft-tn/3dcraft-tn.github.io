@@ -296,6 +296,10 @@
   <!-- TOAST -->
   <div id="toast" class="toast"></div>
 
+  <!-- Firebase Cloud SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
   <script src="app.js"></script>
   <script>
     const PASS = 'admin3dcraft2026';
@@ -324,7 +328,7 @@
       renderDashboard();
       renderOrdersDashboard();
 
-      // Chargement en direct depuis le Cloud GitHub
+      // Chargement en direct depuis le Cloud (Firebase Firestore + GitHub)
       try {
         await Promise.all([Store.loadRemote(), OrderStore.loadRemote()]);
       } catch(e) {
@@ -332,6 +336,27 @@
       }
       renderDashboard();
       renderOrdersDashboard();
+
+      // Écoute en direct ultra-rapide Firebase Firestore
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        const oBadge = document.getElementById('ordersSyncBadge');
+        if(oBadge) oBadge.innerHTML = '🟢 Firebase Firestore Connecté (Temps Réel)';
+        const pBadge = document.getElementById('syncStatusBadge');
+        if(pBadge) pBadge.innerHTML = '🟢 Firebase Firestore Connecté (Temps Réel)';
+
+        CloudStore.listenOrders(orders => {
+          if (Array.isArray(orders)) {
+            OrderStore.save(orders);
+            renderOrdersDashboard();
+          }
+        });
+        CloudStore.listenProducts(prods => {
+          if (Array.isArray(prods) && prods.length > 0) {
+            Store.save(prods);
+            renderDashboard();
+          }
+        });
+      }
 
       // Démarrage de la surveillance automatique des nouvelles commandes (toutes les 15s)
       if (!window.orderWatcherInterval) {
