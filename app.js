@@ -27,6 +27,19 @@ const Store = {
   KEY: '3dcraft_products',
 
   async loadRemote() {
+    // 0. Essai ultra-rapide Firebase Firestore si connecté
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      try {
+        const fireProds = await CloudStore.getProducts();
+        if (Array.isArray(fireProds) && fireProds.length > 0) {
+          this.save(fireProds);
+          return fireProds;
+        }
+      } catch(e) {
+        console.warn('Firestore loadRemote products fallback', e);
+      }
+    }
+
     // 1. Essai relatif direct (rapide, sans limite API, fonctionne en local et sur GitHub Pages)
     const isSub = window.location.pathname.includes('/pages/');
     const relUrl = (isSub ? '../data/products.json' : 'data/products.json') + '?t=' + Date.now();
@@ -89,6 +102,9 @@ const Store = {
     p.id = Date.now().toString();
     l.unshift(p);
     this.save(l);
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.addProduct(p).catch(e => console.warn('CloudStore addProduct err', e));
+    }
     return p;
   },
 
@@ -98,6 +114,9 @@ const Store = {
     if (i !== -1) {
       l[i] = { ...l[i], ...u };
       this.save(l);
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        CloudStore.updateProduct(id, l[i]).catch(e => console.warn('CloudStore updateProduct err', e));
+      }
       return l[i];
     }
     return null;
@@ -105,6 +124,9 @@ const Store = {
 
   delete(id) {
     this.save(this.getAll().filter(p => p.id !== id));
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.deleteProduct(id).catch(e => console.warn('CloudStore deleteProduct err', e));
+    }
   },
 
   byCat(c) {
@@ -135,8 +157,21 @@ const OrderStore = {
     localStorage.setItem(this.KEY, JSON.stringify(orders || []));
   },
 
-  // Charger les commandes depuis le Cloud GitHub
+  // Charger les commandes depuis Firebase Firestore ou GitHub Cloud
   async loadRemote() {
+    // 0. Essai ultra-rapide Firebase Firestore si connecté
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      try {
+        const fireOrders = await CloudStore.getOrders();
+        if (Array.isArray(fireOrders) && fireOrders.length > 0) {
+          this.save(fireOrders);
+          return fireOrders;
+        }
+      } catch(e) {
+        console.warn('Firestore loadRemote orders fallback', e);
+      }
+    }
+
     const token = getCloudToken();
     let remoteOrders = null;
 
@@ -299,7 +334,12 @@ const OrderStore = {
     list.unshift(order);
     this.save(list);
 
-    // Envoi en arrière-plan vers GitHub Cloud
+    // 1. Envoi instantané vers Firebase Firestore
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.addOrder(order).catch(err => console.warn('Firestore addOrder error:', err));
+    }
+
+    // 2. Envoi vers GitHub Cloud (Double sécurité)
     this.sendToCloud(order).catch(err => console.warn('Cloud sync error:', err));
     return order;
   },
@@ -310,6 +350,12 @@ const OrderStore = {
     if (idx !== -1) {
       list[idx].status = newStatus;
       this.save(list);
+
+      // Firestore update
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        CloudStore.updateOrderStatus(id, newStatus).catch(err => console.warn('Firestore updateOrderStatus error:', err));
+      }
+
       this.syncAllToCloud(list).catch(err => console.warn('Cloud updateStatus error:', err));
       return list[idx];
     }
@@ -319,6 +365,12 @@ const OrderStore = {
   delete(id) {
     const list = this.getAll().filter(o => o.id !== id);
     this.save(list);
+
+    // Firestore delete
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.deleteOrder(id).catch(err => console.warn('Firestore deleteOrder error:', err));
+    }
+
     this.syncAllToCloud(list).catch(err => console.warn('Cloud delete error:', err));
     return list;
   }
