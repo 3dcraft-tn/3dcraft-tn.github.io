@@ -185,10 +185,14 @@
         <!-- ORDERS TOP BAR -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:14px;">
           <div>
-            <h1 style="font-size:1.8rem; font-weight:900; margin:0 0 4px 0;">Gestion des <span>Commandes Clients</span></h1>
-            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Consultez les commandes, contactez vos clients et gérez l'état de fabrication et livraison</p>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+              <h1 style="font-size:1.8rem; font-weight:900; margin:0;">Gestion des <span>Commandes Clients</span></h1>
+              <span id="ordersSyncBadge" style="padding:5px 12px; border-radius:50px; font-size:.8rem; font-weight:700; background:var(--primary-soft); color:var(--primary);">🟢 En direct (Synchro Cloud Active)</span>
+            </div>
+            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Toutes les commandes passées depuis n'importe quel téléphone s'affichent ici en temps réel</p>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="refreshOrdersManual()" style="background:#0284c7; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(2,132,199,.3);">🔄 Actualiser en direct</button>
             <button class="btn btn-primary btn-sm" onclick="openManualOrderModal()" style="font-weight:800;">➕ Ajouter Commande Manuelle</button>
             <button class="btn btn-dark btn-sm" onclick="exportOrdersJSON()">📥 Exporter Commandes</button>
             <button class="btn btn-dark btn-sm" onclick="clearOrdersHistory()" style="color:var(--danger);">🗑️ Vider</button>
@@ -319,9 +323,46 @@
       document.getElementById('adminNav').style.display = 'flex';
       renderDashboard();
       renderOrdersDashboard();
-      await Store.loadRemote();
+
+      // Chargement en direct depuis le Cloud GitHub
+      try {
+        await Promise.all([Store.loadRemote(), OrderStore.loadRemote()]);
+      } catch(e) {
+        console.warn('Initial cloud load warning:', e);
+      }
       renderDashboard();
       renderOrdersDashboard();
+
+      // Démarrage de la surveillance automatique des nouvelles commandes (toutes les 15s)
+      if (!window.orderWatcherInterval) {
+        window.orderWatcherInterval = setInterval(async () => {
+          const prevCount = OrderStore.getAll().length;
+          await OrderStore.loadRemote();
+          const newCount = OrderStore.getAll().length;
+          renderOrdersDashboard();
+          if (newCount > prevCount) {
+            toast('🔔 Nouvelle commande client reçue en direct !');
+          }
+        }, 15000);
+      }
+    }
+
+    async function refreshOrdersManual(){
+      const badge = document.getElementById('ordersSyncBadge');
+      if(badge){
+        badge.innerHTML = '⏳ Synchronisation Cloud...';
+        badge.style.background = '#e0f2fe';
+        badge.style.color = '#0284c7';
+      }
+      await OrderStore.loadRemote();
+      renderOrdersDashboard();
+      if(badge){
+        const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        badge.innerHTML = '🟢 En direct (' + time + ')';
+        badge.style.background = 'var(--primary-soft)';
+        badge.style.color = 'var(--primary)';
+      }
+      toast('Commandes actualisées depuis le Cloud ! 🔄');
     }
 
     function logout(){
@@ -792,8 +833,7 @@
           method: 'PUT',
           headers: {
             'Authorization': 'token ' + token,
-            'Content-Type': 'application/json',
-            'Accept': 'application/vnd.github.v3+json'
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             message: 'Mise à jour automatique catalogue 3D Craft',
