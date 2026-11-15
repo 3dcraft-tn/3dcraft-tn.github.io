@@ -1,12 +1,12 @@
 /**
- * 3D CRAFT - Main Store & Orders JavaScript
- * Synchronized with app.js
+ * 3D CRAFT - Application Core JavaScript
+ * Store (Products) & OrderStore (Cloud-Synced Customer Orders)
  */
 
 const SEC_PAYLOAD = '060c1d362162263a2b591f40785c6a5e2e570b231b7009222706053a76535c54001e595e05600d0f';
 const APP_PASS = 'admin3dcraft2026';
 const GITHUB_REPO = '3dcraft-tn/3dcraft-tn.github.io';
-const STORE_PHONE = '21646595833';
+const STORE_PHONE = '21646595833'; // +216 46 595 833
 
 function xorDec(hex, key) {
   let bytes = [];
@@ -27,6 +27,20 @@ const Store = {
   KEY: '3dcraft_products',
 
   async loadRemote() {
+    // 0. Essai ultra-rapide Firebase Firestore si connecté
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      try {
+        const fireProds = await CloudStore.getProducts();
+        if (Array.isArray(fireProds) && fireProds.length > 0) {
+          this.save(fireProds);
+          return fireProds;
+        }
+      } catch(e) {
+        console.warn('Firestore loadRemote products fallback', e);
+      }
+    }
+
+    // 1. Essai relatif direct (rapide, sans limite API, fonctionne en local et sur GitHub Pages)
     const isSub = window.location.pathname.includes('/pages/');
     const relUrl = (isSub ? '../data/products.json' : 'data/products.json') + '?t=' + Date.now();
     try {
@@ -42,6 +56,7 @@ const Store = {
       console.warn('Relative products fetch fallback', e);
     }
 
+    // 2. Essai via GitHub API directe
     try {
       const token = getCloudToken();
       const apiRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/products.json`, {
@@ -87,6 +102,9 @@ const Store = {
     p.id = Date.now().toString();
     l.unshift(p);
     this.save(l);
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.addProduct(p).catch(e => console.warn('CloudStore addProduct err', e));
+    }
     return p;
   },
 
@@ -96,6 +114,9 @@ const Store = {
     if (i !== -1) {
       l[i] = { ...l[i], ...u };
       this.save(l);
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        CloudStore.updateProduct(id, l[i]).catch(e => console.warn('CloudStore updateProduct err', e));
+      }
       return l[i];
     }
     return null;
@@ -103,6 +124,9 @@ const Store = {
 
   delete(id) {
     this.save(this.getAll().filter(p => p.id !== id));
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.deleteProduct(id).catch(e => console.warn('CloudStore deleteProduct err', e));
+    }
   },
 
   byCat(c) {
@@ -112,19 +136,6 @@ const Store = {
   getDefaults() {
     return [];
   }
-};
-
-// Alias for Category Pages
-const ProductStore = {
-  getAll() { return Store.getAll(); },
-  save(p) { Store.save(p); },
-  add(p) { return Store.add(p); },
-  update(id, u) { return Store.update(id, u); },
-  delete(id) { Store.delete(id); },
-  getByCategory(c) { return Store.byCat(c); },
-  getFeatured() { return Store.getAll().filter(p => p.featured); },
-  loadRemote() { return Store.loadRemote(); },
-  getDefaultProducts() { return []; }
 };
 
 // ==========================================
@@ -146,10 +157,25 @@ const OrderStore = {
     localStorage.setItem(this.KEY, JSON.stringify(orders || []));
   },
 
+  // Charger les commandes depuis Firebase Firestore ou GitHub Cloud
   async loadRemote() {
+    // 0. Essai ultra-rapide Firebase Firestore si connecté
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      try {
+        const fireOrders = await CloudStore.getOrders();
+        if (Array.isArray(fireOrders) && fireOrders.length > 0) {
+          this.save(fireOrders);
+          return fireOrders;
+        }
+      } catch(e) {
+        console.warn('Firestore loadRemote orders fallback', e);
+      }
+    }
+
     const token = getCloudToken();
     let remoteOrders = null;
 
+    // 1. Essai API GitHub (temps réel avec token)
     try {
       const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
         headers: {
@@ -168,6 +194,7 @@ const OrderStore = {
       console.warn('API orders fetch fallback', e);
     }
 
+    // 2. Secours relatif
     if (!remoteOrders) {
       try {
         const isSub = window.location.pathname.includes('/pages/');
@@ -182,6 +209,7 @@ const OrderStore = {
     }
 
     if (Array.isArray(remoteOrders)) {
+      // Fusionner avec les commandes locales sans doublons
       const local = this.getAll();
       const map = new Map();
       remoteOrders.forEach(o => { if (o && o.id) map.set(o.id, o); });
@@ -194,10 +222,12 @@ const OrderStore = {
     return this.getAll();
   },
 
+  // Envoyer une nouvelle commande directement dans GitHub data/orders.json
   async sendToCloud(order, retries = 3) {
     const token = getCloudToken();
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
+        // 1. Obtenir le SHA actuel et la liste en direct
         let currentOrders = [];
         let sha = null;
 
@@ -219,10 +249,12 @@ const OrderStore = {
           }
         }
 
+        // Ajouter l'ordre sans doublon
         if (!currentOrders.some(o => o.id === order.id)) {
           currentOrders.unshift(order);
         }
 
+        // 2. PUT sur GitHub
         const contentB64 = btoa(unescape(encodeURIComponent(JSON.stringify(currentOrders, null, 2))));
         const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
           method: 'PUT',
@@ -240,15 +272,19 @@ const OrderStore = {
         if (putRes.ok) {
           console.log(`✅ Commande #${order.id} enregistrée dans le Cloud GitHub !`);
           return true;
+        } else {
+          console.warn(`Tentative ${attempt + 1}: status ${putRes.status}`);
         }
       } catch(err) {
         console.warn(`Erreur envoi commande cloud (tentative ${attempt + 1}):`, err);
       }
+      // Attente exponentielle avant nouvel essai
       await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
     }
     return false;
   },
 
+  // Synchroniser la liste complète dans le Cloud (utilisé par Admin lors de changement de statut ou suppression)
   async syncAllToCloud(orders, retries = 3) {
     const token = getCloudToken();
     for (let attempt = 0; attempt < retries; attempt++) {
@@ -298,6 +334,12 @@ const OrderStore = {
     list.unshift(order);
     this.save(list);
 
+    // 1. Envoi instantané vers Firebase Firestore
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.addOrder(order).catch(err => console.warn('Firestore addOrder error:', err));
+    }
+
+    // 2. Envoi vers GitHub Cloud (Double sécurité)
     this.sendToCloud(order).catch(err => console.warn('Cloud sync error:', err));
     return order;
   },
@@ -308,6 +350,12 @@ const OrderStore = {
     if (idx !== -1) {
       list[idx].status = newStatus;
       this.save(list);
+
+      // Firestore update
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        CloudStore.updateOrderStatus(id, newStatus).catch(err => console.warn('Firestore updateOrderStatus error:', err));
+      }
+
       this.syncAllToCloud(list).catch(err => console.warn('Cloud updateStatus error:', err));
       return list[idx];
     }
@@ -317,6 +365,12 @@ const OrderStore = {
   delete(id) {
     const list = this.getAll().filter(o => o.id !== id);
     this.save(list);
+
+    // Firestore delete
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.deleteOrder(id).catch(err => console.warn('Firestore deleteOrder error:', err));
+    }
+
     this.syncAllToCloud(list).catch(err => console.warn('Cloud delete error:', err));
     return list;
   }
@@ -325,6 +379,49 @@ const OrderStore = {
 // ==========================================
 // CATEGORIES & EMOJIS
 // ==========================================
+const Categories = CATS;
+
+// Backward-compatibility aliases for category pages
+const ProductStore = {
+  getAll() { return Store.getAll(); },
+  save(p) { Store.save(p); },
+  add(p) { return Store.add(p); },
+  update(id, u) { return Store.update(id, u); },
+  delete(id) { Store.delete(id); },
+  getByCategory(c) { return Store.byCat(c); },
+  getFeatured() { return Store.getAll().filter(p => p.featured); },
+  loadRemote() { return Store.loadRemote(); },
+  getDefaultProducts() { return []; }
+};
+
+function formatPrice(p) {
+  return parseFloat(p || 0).toFixed(2);
+}
+
+function getProductEmoji(cat, i = 0) {
+  return getEmoji(cat, i);
+}
+
+function renderProductsGrid(containerId, products) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!products || products.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #fff; border: 1px dashed var(--border); border-radius: 16px; margin: 20px 0;">
+        <div style="font-size: 2.8rem; margin-bottom: 12px;">📦</div>
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin-bottom: 8px;">Aucun article dans cette catégorie pour le moment</h3>
+        <p style="color: var(--text-muted); font-size: 0.92rem; max-width: 460px; margin: 0 auto 20px;">
+          Vous avez un projet ou une idée précise ? Nous pouvons modéliser et imprimer n'importe quelle pièce sur mesure !
+        </p>
+        <a href="https://wa.me/${STORE_PHONE}?text=${encodeURIComponent('Bonjour 3D Craft! 👋 Je souhaite commander une impression 3D personnalisée sur mesure.')}" target="_blank" class="btn btn-primary btn-sm" style="background:#25D366; border-color:#25D366; font-weight:700;">
+          💬 Demander une création sur mesure (WhatsApp)
+        </a>
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = products.map((p, i) => cardHTML(p, i)).join('');
+}
 const CATS = {
   'home-decor': { name: 'Décoration Maison', icon: '🏠', desc: 'Vases, veilleuses, lampes et serre-livres' },
   'gaming': { name: 'Gaming Setup', icon: '🎮', desc: 'Supports de manettes, casques et touches custom' },
@@ -335,8 +432,6 @@ const CATS = {
   'gifts': { name: 'Idées Cadeaux', icon: '🎁', desc: 'Lithophanies photo, boîtes secrètes et surprises' },
   'keychains': { name: 'Porte-clés Custom', icon: '🔑', desc: 'Porte-clés prénom bicolore, logos auto et codes Spotify' }
 };
-
-const Categories = CATS;
 
 const EMOJIS = {
   'home-decor': ['🏺', '🪴', '💡', '🏠'],
@@ -352,14 +447,6 @@ const EMOJIS = {
 function getEmoji(cat, i = 0) {
   const a = EMOJIS[cat] || ['📦'];
   return a[i % a.length];
-}
-
-function getProductEmoji(cat, i = 0) {
-  return getEmoji(cat, i);
-}
-
-function formatPrice(p) {
-  return parseFloat(p || 0).toFixed(2);
 }
 
 function toast(m) {
@@ -396,27 +483,6 @@ function cardHTML(p, i = 0) {
       </div>
     </div>
   `;
-}
-
-function renderProductsGrid(containerId, products) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  if (!products || products.length === 0) {
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #fff; border: 1px dashed var(--border); border-radius: 16px; margin: 20px 0;">
-        <div style="font-size: 2.8rem; margin-bottom: 12px;">📦</div>
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin-bottom: 8px;">Aucun article dans cette catégorie pour le moment</h3>
-        <p style="color: var(--text-muted); font-size: 0.92rem; max-width: 460px; margin: 0 auto 20px;">
-          Vous avez un projet ou une idée précise ? Nous pouvons modéliser et imprimer n'importe quelle pièce sur mesure !
-        </p>
-        <a href="https://wa.me/${STORE_PHONE}?text=${encodeURIComponent('Bonjour 3D Craft! 👋 Je souhaite commander une impression 3D personnalisée sur mesure.')}" target="_blank" class="btn btn-primary btn-sm" style="background:#25D366; border-color:#25D366; font-weight:700;">
-          💬 Demander une création sur mesure (WhatsApp)
-        </a>
-      </div>
-    `;
-    return;
-  }
-  container.innerHTML = products.map((p, i) => cardHTML(p, i)).join('');
 }
 
 // ==========================================
@@ -469,6 +535,7 @@ function openProductModal(id) {
   document.getElementById('orderQty').value = 1;
   document.getElementById('orderComment').value = '';
 
+  // Pré-remplir les coordonnées si le client a déjà commandé
   try {
     const savedCustomer = JSON.parse(localStorage.getItem('3dcraft_customer_info') || '{}');
     if (savedCustomer.name && !document.getElementById('orderName').value) {
@@ -524,6 +591,7 @@ function submitCustomerOrder(e, isDirectWhatsApp = false) {
     return;
   }
 
+  // Sauvegarde des coordonnées du client pour sa prochaine visite
   try {
     localStorage.setItem('3dcraft_customer_info', JSON.stringify({ name, phone, address }));
   } catch(e){}
@@ -546,8 +614,10 @@ function submitCustomerOrder(e, isDirectWhatsApp = false) {
     status: 'pending'
   };
 
+  // Enregistrement dans OrderStore (localStorage + Cloud GitHub)
   const created = OrderStore.add(order);
 
+  // Message WhatsApp formaté pour l'artisan 3D Craft
   const waMsg = encodeURIComponent(
     `Bonjour 3D Craft! 👋\n` +
     `Je souhaite commander la référence *#${created.id}* passée sur votre boutique en ligne :\n` +
@@ -566,10 +636,12 @@ function submitCustomerOrder(e, isDirectWhatsApp = false) {
 
   const waUrl = `https://wa.me/${STORE_PHONE}?text=${waMsg}`;
 
+  // Si l'utilisateur a choisi la commande directe WhatsApp
   if (isDirectWhatsApp) {
     window.open(waUrl, '_blank');
   }
 
+  // Affichage de la vue de succès
   const orderView = document.getElementById('modalOrderView');
   const successView = document.getElementById('modalSuccessView');
   if (orderView) orderView.style.display = 'none';
