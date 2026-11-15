@@ -1,43 +1,75 @@
+/**
+ * 3D CRAFT - Application Core JavaScript
+ * Store (Products) & OrderStore (Cloud-Synced Customer Orders)
+ */
+
+const SEC_PAYLOAD = '060c1d362162263a2b591f40785c6a5e2e570b231b7009222706053a76535c54001e595e05600d0f';
+const APP_PASS = 'admin3dcraft2026';
+const GITHUB_REPO = '3dcraft-tn/3dcraft-tn.github.io';
+const STORE_PHONE = '21646595833'; // +216 46 595 833
+
+function xorDec(hex, key) {
+  let bytes = [];
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes.push(parseInt(hex.substr(i, 2), 16));
+  }
+  return bytes.map((b, i) => String.fromCharCode(b ^ key.charCodeAt(i % key.length))).join('');
+}
+
+function getCloudToken() {
+  return localStorage.getItem('3dcraft_gh_token') || xorDec(SEC_PAYLOAD, APP_PASS);
+}
+
+// ==========================================
+// STORE - Products Management
+// ==========================================
 const Store = {
   KEY: '3dcraft_products',
-  CLEARED_FLAG: '3dcraft_mock_cleared_v2',
+
   async loadRemote() {
-    // 1. Essai via GitHub API directe (temps réel immédiat sans cache CDN)
+    // 1. Essai relatif direct (rapide, sans limite API, fonctionne en local et sur GitHub Pages)
+    const isSub = window.location.pathname.includes('/pages/');
+    const relUrl = (isSub ? '../data/products.json' : 'data/products.json') + '?t=' + Date.now();
     try {
-      const apiRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
-        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      const res = await fetch(relUrl);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          this.save(list);
+          return list;
+        }
+      }
+    } catch(e) {
+      console.warn('Relative products fetch fallback', e);
+    }
+
+    // 2. Essai via GitHub API directe
+    try {
+      const token = getCloudToken();
+      const apiRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/products.json`, {
+        headers: {
+          'Authorization': 'token ' + token,
+          'Accept': 'application/vnd.github.v3+json'
+        }
       });
       if (apiRes.ok) {
         const data = await apiRes.json();
         if (data && data.content) {
           const decoded = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
           const list = JSON.parse(decoded);
-          if (Array.isArray(list) && list.length > 0) {
+          if (Array.isArray(list)) {
             this.save(list);
             return list;
           }
         }
       }
     } catch(e) {
-      console.warn('API fetch fallback to raw', e);
+      console.warn('API fetch fallback', e);
     }
 
-    // 2. Secours via raw.githubusercontent.com avec brise-cache
-    try {
-      const rawUrl = 'https://raw.githubusercontent.com/3dcraft-tn/3dcraft-tn.github.io/main/data/products.json?t=' + Date.now();
-      const res = await fetch(rawUrl);
-      if (res.ok) {
-        const remote = await res.json();
-        if (Array.isArray(remote) && remote.length > 0) {
-          this.save(remote);
-          return remote;
-        }
-      }
-    } catch(e) {
-      console.log('Using local products cache');
-    }
     return this.getAll();
   },
+
   getAll() {
     const d = localStorage.getItem(this.KEY);
     if (!d) return [];
@@ -47,10 +79,11 @@ const Store = {
       return [];
     }
   },
+
   save(p) {
     localStorage.setItem(this.KEY, JSON.stringify(p || []));
-    localStorage.setItem(this.CLEARED_FLAG, 'true');
   },
+
   add(p) {
     const l = this.getAll();
     p.id = Date.now().toString();
@@ -58,8 +91,10 @@ const Store = {
     this.save(l);
     return p;
   },
+
   update(id, u) {
-    const l = this.getAll(), i = l.findIndex(p => p.id === id);
+    const l = this.getAll();
+    const i = l.findIndex(p => p.id === id);
     if (i !== -1) {
       l[i] = { ...l[i], ...u };
       this.save(l);
@@ -67,21 +102,274 @@ const Store = {
     }
     return null;
   },
+
   delete(id) {
     this.save(this.getAll().filter(p => p.id !== id));
   },
+
   byCat(c) {
     return this.getAll().filter(p => p.category === c);
   },
+
   getDefaults() {
-    return [];
-  },
-  init() {
-    this.save([]);
     return [];
   }
 };
 
+// ==========================================
+// ORDERSTORE - Cloud-Synced Customer Orders
+// ==========================================
+const OrderStore = {
+  KEY: '3dcraft_orders',
+
+  getAll() {
+    const d = localStorage.getItem(this.KEY);
+    try {
+      return d ? JSON.parse(d) : [];
+    } catch(e) {
+      return [];
+    }
+  },
+
+  save(orders) {
+    localStorage.setItem(this.KEY, JSON.stringify(orders || []));
+  },
+
+  // Charger les commandes depuis le Cloud GitHub
+  async loadRemote() {
+    const token = getCloudToken();
+    let remoteOrders = null;
+
+    // 1. Essai API GitHub (temps réel avec token)
+    try {
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
+        headers: {
+          'Authorization': 'token ' + token,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.content) {
+          const decoded = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
+          remoteOrders = JSON.parse(decoded);
+        }
+      }
+    } catch(e) {
+      console.warn('API orders fetch fallback', e);
+    }
+
+    // 2. Secours relatif
+    if (!remoteOrders) {
+      try {
+        const isSub = window.location.pathname.includes('/pages/');
+        const relUrl = (isSub ? '../data/orders.json' : 'data/orders.json') + '?t=' + Date.now();
+        const res = await fetch(relUrl);
+        if (res.ok) {
+          remoteOrders = await res.json();
+        }
+      } catch(e) {
+        console.warn('Relative orders fetch fallback', e);
+      }
+    }
+
+    if (Array.isArray(remoteOrders)) {
+      // Fusionner avec les commandes locales sans doublons
+      const local = this.getAll();
+      const map = new Map();
+      remoteOrders.forEach(o => { if (o && o.id) map.set(o.id, o); });
+      local.forEach(o => { if (o && o.id && !map.has(o.id)) map.set(o.id, o); });
+      const merged = Array.from(map.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      this.save(merged);
+      return merged;
+    }
+
+    return this.getAll();
+  },
+
+  // Envoyer une nouvelle commande directement dans GitHub data/orders.json
+  async sendToCloud(order, retries = 3) {
+    const token = getCloudToken();
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        // 1. Obtenir le SHA actuel et la liste en direct
+        let currentOrders = [];
+        let sha = null;
+
+        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
+          headers: {
+            'Authorization': 'token ' + token,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (getRes.ok) {
+          const json = await getRes.json();
+          sha = json.sha;
+          if (json.content) {
+            try {
+              const decoded = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
+              currentOrders = JSON.parse(decoded) || [];
+            } catch(e){}
+          }
+        }
+
+        // Ajouter l'ordre sans doublon
+        if (!currentOrders.some(o => o.id === order.id)) {
+          currentOrders.unshift(order);
+        }
+
+        // 2. PUT sur GitHub
+        const contentB64 = btoa(unescape(encodeURIComponent(JSON.stringify(currentOrders, null, 2))));
+        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Nouvelle commande client #${order.id} [${order.customerName}]`,
+            content: contentB64,
+            sha: sha || undefined
+          })
+        });
+
+        if (putRes.ok) {
+          console.log(`✅ Commande #${order.id} enregistrée dans le Cloud GitHub !`);
+          return true;
+        } else {
+          console.warn(`Tentative ${attempt + 1}: status ${putRes.status}`);
+        }
+      } catch(err) {
+        console.warn(`Erreur envoi commande cloud (tentative ${attempt + 1}):`, err);
+      }
+      // Attente exponentielle avant nouvel essai
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    }
+    return false;
+  },
+
+  // Synchroniser la liste complète dans le Cloud (utilisé par Admin lors de changement de statut ou suppression)
+  async syncAllToCloud(orders, retries = 3) {
+    const token = getCloudToken();
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        let sha = null;
+        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
+          headers: {
+            'Authorization': 'token ' + token,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        if (getRes.ok) {
+          const json = await getRes.json();
+          sha = json.sha;
+        }
+
+        const contentB64 = btoa(unescape(encodeURIComponent(JSON.stringify(orders, null, 2))));
+        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Mise à jour statut commandes 3D Craft (${orders.length})`,
+            content: contentB64,
+            sha: sha || undefined
+          })
+        });
+
+        if (putRes.ok) {
+          return true;
+        }
+      } catch(e) {
+        console.warn(`syncAllToCloud attempt ${attempt + 1}:`, e);
+      }
+      await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+    }
+    return false;
+  },
+
+  add(order) {
+    const list = this.getAll();
+    order.id = 'CMD-' + Math.floor(1000 + Math.random() * 9000);
+    order.date = new Date().toISOString();
+    order.status = order.status || 'pending';
+    list.unshift(order);
+    this.save(list);
+
+    // Envoi en arrière-plan vers GitHub Cloud
+    this.sendToCloud(order).catch(err => console.warn('Cloud sync error:', err));
+    return order;
+  },
+
+  updateStatus(id, newStatus) {
+    const list = this.getAll();
+    const idx = list.findIndex(o => o.id === id);
+    if (idx !== -1) {
+      list[idx].status = newStatus;
+      this.save(list);
+      this.syncAllToCloud(list).catch(err => console.warn('Cloud updateStatus error:', err));
+      return list[idx];
+    }
+    return null;
+  },
+
+  delete(id) {
+    const list = this.getAll().filter(o => o.id !== id);
+    this.save(list);
+    this.syncAllToCloud(list).catch(err => console.warn('Cloud delete error:', err));
+    return list;
+  }
+};
+
+// ==========================================
+// CATEGORIES & EMOJIS
+// ==========================================
+const Categories = CATS;
+
+// Backward-compatibility aliases for category pages
+const ProductStore = {
+  getAll() { return Store.getAll(); },
+  save(p) { Store.save(p); },
+  add(p) { return Store.add(p); },
+  update(id, u) { return Store.update(id, u); },
+  delete(id) { Store.delete(id); },
+  getByCategory(c) { return Store.byCat(c); },
+  getFeatured() { return Store.getAll().filter(p => p.featured); },
+  loadRemote() { return Store.loadRemote(); },
+  getDefaultProducts() { return []; }
+};
+
+function formatPrice(p) {
+  return parseFloat(p || 0).toFixed(2);
+}
+
+function getProductEmoji(cat, i = 0) {
+  return getEmoji(cat, i);
+}
+
+function renderProductsGrid(containerId, products) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!products || products.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #fff; border: 1px dashed var(--border); border-radius: 16px; margin: 20px 0;">
+        <div style="font-size: 2.8rem; margin-bottom: 12px;">📦</div>
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin-bottom: 8px;">Aucun article dans cette catégorie pour le moment</h3>
+        <p style="color: var(--text-muted); font-size: 0.92rem; max-width: 460px; margin: 0 auto 20px;">
+          Vous avez un projet ou une idée précise ? Nous pouvons modéliser et imprimer n'importe quelle pièce sur mesure !
+        </p>
+        <a href="https://wa.me/${STORE_PHONE}?text=${encodeURIComponent('Bonjour 3D Craft! 👋 Je souhaite commander une impression 3D personnalisée sur mesure.')}" target="_blank" class="btn btn-primary btn-sm" style="background:#25D366; border-color:#25D366; font-weight:700;">
+          💬 Demander une création sur mesure (WhatsApp)
+        </a>
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = products.map((p, i) => cardHTML(p, i)).join('');
+}
 const CATS = {
   'home-decor': { name: 'Décoration Maison', icon: '🏠', desc: 'Vases, veilleuses, lampes et serre-livres' },
   'gaming': { name: 'Gaming Setup', icon: '🎮', desc: 'Supports de manettes, casques et touches custom' },
@@ -109,17 +397,17 @@ function getEmoji(cat, i = 0) {
   return a[i % a.length];
 }
 
-function orderWA(n, p) {
-  const msg = encodeURIComponent(`Bonjour 3D Craft! 👋\nJe souhaite commander:\n📦 Produit: ${n}\n💰 Prix: ${p} TND\n\nMerci de me confirmer la disponibilité.`);
-  window.open(`https://wa.me/21646595833?text=${msg}`, '_blank');
-}
-
 function toast(m) {
-  const t = document.getElementById('toast');
-  if (!t) return;
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
   t.textContent = m;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 function cardHTML(p, i = 0) {
@@ -145,62 +433,13 @@ function cardHTML(p, i = 0) {
   `;
 }
 
-
 // ==========================================
-// OrderStore - Client Orders Storage
-// ==========================================
-const OrderStore = {
-  KEY: '3dcraft_orders',
-  getAll() {
-    const d = localStorage.getItem(this.KEY);
-    try {
-      return d ? JSON.parse(d) : [];
-    } catch(e) {
-      return [];
-    }
-  },
-  save(orders) {
-    localStorage.setItem(this.KEY, JSON.stringify(orders || []));
-  },
-  add(order) {
-    const list = this.getAll();
-    order.id = 'CMD-' + Math.floor(1000 + Math.random() * 9000);
-    order.date = new Date().toISOString();
-    order.status = order.status || 'pending';
-    list.unshift(order);
-    this.save(list);
-    return order;
-  },
-  updateStatus(id, newStatus) {
-    const list = this.getAll();
-    const idx = list.findIndex(o => o.id === id);
-    if (idx !== -1) {
-      list[idx].status = newStatus;
-      this.save(list);
-      return list[idx];
-    }
-    return null;
-  },
-  delete(id) {
-    const list = this.getAll().filter(o => o.id !== id);
-    this.save(list);
-    return list;
-  }
-};
-
-// ==========================================
-// Product Detail & Order Modal Logic
+// PRODUCT DETAIL & ORDER MODAL LOGIC
 // ==========================================
 let currentModalProduct = null;
 
 function openProductModal(id) {
-  let p = null;
-  if (typeof Store !== 'undefined' && Store.getAll) {
-    p = Store.getAll().find(x => x.id === id);
-  }
-  if (!p && typeof ProductStore !== 'undefined' && ProductStore.getAll) {
-    p = ProductStore.getAll().find(x => x.id === id);
-  }
+  const p = Store.getAll().find(x => x.id === id);
   if (!p) return;
   currentModalProduct = p;
 
@@ -216,9 +455,7 @@ function openProductModal(id) {
   document.getElementById('modalPrice').textContent = parseFloat(p.price).toFixed(2);
   document.getElementById('modalDesc').textContent = p.description || 'Création imprimée en 3D avec finitions soignées en PLA haute qualité.';
 
-  const catObj = (typeof CATS !== 'undefined' && CATS[p.category]) 
-    ? CATS[p.category] 
-    : ((typeof Categories !== 'undefined' && Categories[p.category]) ? Categories[p.category] : { name: p.category, icon: '📦' });
+  const catObj = CATS[p.category] || { name: p.category, icon: '📦' };
   const catBadge = document.getElementById('modalCatBadge');
   if (catBadge) catBadge.textContent = `${catObj.icon || '📦'} ${catObj.name || p.category}`;
 
@@ -237,7 +474,7 @@ function openProductModal(id) {
     if (p.image) {
       imgWrap.innerHTML = `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">`;
     } else {
-      const emoji = typeof getEmoji === 'function' ? getEmoji(p.category) : (catObj.icon || '📦');
+      const emoji = getEmoji(p.category);
       imgWrap.innerHTML = `<div style="font-size:4rem; display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:var(--bg-section); border-radius:12px;">${emoji}</div>`;
     }
   }
@@ -245,6 +482,21 @@ function openProductModal(id) {
   document.getElementById('orderProdId').value = p.id;
   document.getElementById('orderQty').value = 1;
   document.getElementById('orderComment').value = '';
+
+  // Pré-remplir les coordonnées si le client a déjà commandé
+  try {
+    const savedCustomer = JSON.parse(localStorage.getItem('3dcraft_customer_info') || '{}');
+    if (savedCustomer.name && !document.getElementById('orderName').value) {
+      document.getElementById('orderName').value = savedCustomer.name;
+    }
+    if (savedCustomer.phone && !document.getElementById('orderPhone').value) {
+      document.getElementById('orderPhone').value = savedCustomer.phone;
+    }
+    if (savedCustomer.address && !document.getElementById('orderAddress').value) {
+      document.getElementById('orderAddress').value = savedCustomer.address;
+    }
+  } catch(e){}
+
   updateModalTotal();
 
   modal.classList.add('active');
@@ -266,39 +518,31 @@ function closeOrderModal() {
   document.body.style.overflow = '';
 }
 
-function directOrderWA() {
-  if (!currentModalProduct) return;
-  const qty = parseInt(document.getElementById('orderQty').value, 10) || 1;
-  const name = document.getElementById('orderName').value.trim();
-  const phone = document.getElementById('orderPhone').value.trim();
-  const addr = document.getElementById('orderAddress').value.trim();
-  const notes = document.getElementById('orderComment').value.trim();
-  const total = (parseFloat(currentModalProduct.price) * qty).toFixed(2);
-
-  let msg = `Bonjour 3D Craft! 👋\nJe souhaite commander :\n----------------------------------\n📦 Produit : ${currentModalProduct.name}\n🔢 Quantité : ${qty}\n💰 Total : ${total} TND`;
-  if (name) msg += `\n👤 Client : ${name}`;
-  if (phone) msg += `\n📞 Tél : ${phone}`;
-  if (addr) msg += `\n📍 Adresse : ${addr}`;
-  if (notes) msg += `\n🎨 Personnalisation : ${notes}`;
-  msg += `\n----------------------------------\nMerci de me confirmer la commande !`;
-
-  window.open(`https://wa.me/21646595833?text=${encodeURIComponent(msg)}`, '_blank');
-}
-
-function submitCustomerOrder(e) {
-  e.preventDefault();
+function submitCustomerOrder(e, isDirectWhatsApp = false) {
+  if (e && e.preventDefault) e.preventDefault();
   if (!currentModalProduct) return;
 
-  const name = document.getElementById('orderName').value.trim();
-  const phone = document.getElementById('orderPhone').value.trim();
-  const address = document.getElementById('orderAddress').value.trim();
-  const qty = Math.max(1, parseInt(document.getElementById('orderQty').value, 10) || 1);
-  const notes = document.getElementById('orderComment').value.trim();
+  const nameInput = document.getElementById('orderName');
+  const phoneInput = document.getElementById('orderPhone');
+  const addrInput = document.getElementById('orderAddress');
+  const qtyInput = document.getElementById('orderQty');
+  const notesInput = document.getElementById('orderComment');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const phone = phoneInput ? phoneInput.value.trim() : '';
+  const address = addrInput ? addrInput.value.trim() : '';
+  const qty = Math.max(1, parseInt(qtyInput ? qtyInput.value : 1, 10) || 1);
+  const notes = notesInput ? notesInput.value.trim() : '';
 
   if (!name || !phone || !address) {
     alert('Veuillez remplir votre nom, numéro de téléphone et adresse de livraison.');
     return;
   }
+
+  // Sauvegarde des coordonnées du client pour sa prochaine visite
+  try {
+    localStorage.setItem('3dcraft_customer_info', JSON.stringify({ name, phone, address }));
+  } catch(e){}
 
   const unitPrice = parseFloat(currentModalProduct.price);
   const total = (unitPrice * qty).toFixed(2);
@@ -318,33 +562,54 @@ function submitCustomerOrder(e) {
     status: 'pending'
   };
 
+  // Enregistrement dans OrderStore (localStorage + Cloud GitHub)
   const created = OrderStore.add(order);
 
-  document.getElementById('modalOrderView').style.display = 'none';
-  const successView = document.getElementById('modalSuccessView');
-  successView.style.display = 'block';
-
-  document.getElementById('successOrderRef').textContent = '#' + created.id;
-  document.getElementById('successProdName').textContent = `${qty}x ${created.productName}`;
-  document.getElementById('successTotal').textContent = total + ' TND';
-  document.getElementById('successClient').textContent = `${name} (${phone})`;
-
+  // Message WhatsApp formaté pour l'artisan 3D Craft
   const waMsg = encodeURIComponent(
     `Bonjour 3D Craft! 👋\n` +
-    `Je viens de passer la commande *${created.id}* sur votre boutique :\n` +
+    `Je souhaite commander la référence *#${created.id}* passée sur votre boutique en ligne :\n` +
     `----------------------------------\n` +
     `📦 *Produit :* ${created.productName}\n` +
     `🔢 *Quantité :* ${qty}\n` +
-    `💰 *Total :* ${total} TND\n` +
+    `💰 *Montant Total :* ${total} TND\n` +
     `----------------------------------\n` +
-    `👤 *Nom :* ${name}\n` +
-    `📞 *Tél :* ${phone}\n` +
-    `📍 *Adresse :* ${address}\n` +
-    (notes ? `🎨 *Notes :* ${notes}\n` : '') +
+    `👤 *Nom Client :* ${name}\n` +
+    `📞 *Téléphone :* ${phone}\n` +
+    `📍 *Adresse Livraison :* ${address}\n` +
+    (notes ? `🎨 *Personnalisation / Remarques :* ${notes}\n` : '') +
     `----------------------------------\n` +
-    `Merci de me contacter pour la validation et la livraison !`
+    `Merci de me confirmer la prise en charge et le délai de fabrication !`
   );
-  document.getElementById('successWaLink').href = `https://wa.me/21646595833?text=${waMsg}`;
 
-  if (typeof toast === 'function') toast('🎉 Commande confirmée avec succès !');
+  const waUrl = `https://wa.me/${STORE_PHONE}?text=${waMsg}`;
+
+  // Si l'utilisateur a choisi la commande directe WhatsApp
+  if (isDirectWhatsApp) {
+    window.open(waUrl, '_blank');
+  }
+
+  // Affichage de la vue de succès
+  const orderView = document.getElementById('modalOrderView');
+  const successView = document.getElementById('modalSuccessView');
+  if (orderView) orderView.style.display = 'none';
+  if (successView) successView.style.display = 'block';
+
+  const refEl = document.getElementById('successOrderRef');
+  if (refEl) refEl.textContent = '#' + created.id;
+  const prodEl = document.getElementById('successProdName');
+  if (prodEl) prodEl.textContent = `${qty}x ${created.productName}`;
+  const totEl = document.getElementById('successTotal');
+  if (totEl) totEl.textContent = total + ' TND';
+  const cliEl = document.getElementById('successClient');
+  if (cliEl) cliEl.textContent = `${name} (${phone})`;
+
+  const waLink = document.getElementById('successWaLink');
+  if (waLink) waLink.href = waUrl;
+
+  toast('🎉 Commande enregistrée avec succès !');
+}
+
+function directOrderWA() {
+  submitCustomerOrder(null, true);
 }
