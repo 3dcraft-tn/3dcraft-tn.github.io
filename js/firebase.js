@@ -1,32 +1,32 @@
 /**
- * 3D CRAFT - Configuration et Synchronisation Cloud Firebase Firestore
+ * 3D CRAFT - Firebase Firestore Cloud Sync
+ * Project: dcraft-9aa3d
  */
 
-// Configuration Firebase (sera complétée avec vos identifiants)
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_PROJECT_ID.firebaseapp.com",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_PROJECT_ID.appspot.com",
-  messagingSenderId: "VOTRE_SENDER_ID",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyBu2Mfv7nKNVyjI9ltopJnDzEDOHC7nX_0",
+  authDomain: "dcraft-9aa3d.firebaseapp.com",
+  projectId: "dcraft-9aa3d",
+  storageBucket: "dcraft-9aa3d.firebasestorage.app",
+  messagingSenderId: "347480331200",
+  appId: "1:347480331200:web:20787545322ddc8a72ae25",
+  measurementId: "G-JHMD784EEF"
 };
 
-// Initialisation conditionnelle
 let db = null;
 let isFirebaseReady = false;
 
 try {
-  if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== 'VOTRE_API_KEY') {
-    firebase.initializeApp(firebaseConfig);
+  if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     db = firebase.firestore();
     isFirebaseReady = true;
-    console.log('✅ Firebase Firestore connecté avec succès !');
-  } else {
-    console.log('ℹ️ Firebase en attente de configuration. Utilisation du cache local.');
+    console.log('✅ Firebase Firestore connecté en temps réel (dcraft-9aa3d) !');
   }
 } catch (e) {
-  console.warn('Erreur initialisation Firebase:', e);
+  console.warn('Initialisation Firebase Firestore:', e);
 }
 
 const CloudStore = {
@@ -34,80 +34,158 @@ const CloudStore = {
     return isFirebaseReady && db !== null;
   },
 
-  // Écouter les produits en temps réel (pour index.html et pages catégories)
+  // ================= PRODUCTS =================
   listenProducts(callback) {
     if (!this.isReady()) return () => {};
-    return db.collection('products').orderBy('createdAt', 'desc').onSnapshot(
-      snapshot => {
-        const products = [];
-        snapshot.forEach(doc => {
-          products.push({ id: doc.id, ...doc.data() });
-        });
-        callback(products);
-      },
-      error => {
-        console.error('Erreur écoute Firestore:', error);
-      }
-    );
+    try {
+      return db.collection('products').onSnapshot(
+        snapshot => {
+          const list = [];
+          snapshot.forEach(doc => {
+            list.push({ id: doc.id, ...doc.data() });
+          });
+          callback(list);
+        },
+        err => console.warn('Firestore listenProducts error:', err)
+      );
+    } catch(e) {
+      return () => {};
+    }
   },
 
-  // Obtenir tous les produits une fois
-  async getAll() {
+  async getProducts() {
     if (!this.isReady()) return null;
     try {
-      const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
+      const snap = await db.collection('products').get();
       const list = [];
       snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
       return list;
-    } catch (e) {
-      console.error('Erreur getAll Firestore:', e);
+    } catch(e) {
+      console.warn('Firestore getProducts error:', e);
       return null;
     }
   },
 
-  // Ajouter un produit
-  async add(product) {
+  async addProduct(product) {
     if (!this.isReady()) return null;
-    product.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    const docRef = await db.collection('products').add(product);
-    return { id: docRef.id, ...product };
-  },
-
-  // Modifier un produit
-  async update(id, data) {
-    if (!this.isReady()) return null;
-    data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    await db.collection('products').doc(id).update(data);
-    return { id, ...data };
-  },
-
-  // Supprimer un produit
-  async delete(id) {
-    if (!this.isReady()) return false;
-    await db.collection('products').doc(id).delete();
-    return true;
-  },
-
-  // Initialiser les 19 produits par défaut dans Firestore s'il est vide
-  async seedDefaults(defaults) {
-    if (!this.isReady()) return;
     try {
-      const snap = await db.collection('products').limit(1).get();
-      if (snap.empty) {
-        console.log('🌱 Initialisation du catalogue Firestore avec les produits de base...');
-        const batch = db.batch();
-        defaults.forEach(p => {
-          const ref = db.collection('products').doc(p.id);
-          batch.set(ref, {
-            ...p,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      const id = product.id || Date.now().toString();
+      await db.collection('products').doc(id).set({
+        ...product,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return { id, ...product };
+    } catch(e) {
+      console.warn('Firestore addProduct error:', e);
+      return null;
+    }
+  },
+
+  async updateProduct(id, data) {
+    if (!this.isReady()) return null;
+    try {
+      await db.collection('products').doc(id).set({
+        ...data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return { id, ...data };
+    } catch(e) {
+      console.warn('Firestore updateProduct error:', e);
+      return null;
+    }
+  },
+
+  async deleteProduct(id) {
+    if (!this.isReady()) return false;
+    try {
+      await db.collection('products').doc(id).delete();
+      return true;
+    } catch(e) {
+      console.warn('Firestore deleteProduct error:', e);
+      return false;
+    }
+  },
+
+  // ================= ORDERS =================
+  listenOrders(callback) {
+    if (!this.isReady()) return () => {};
+    try {
+      return db.collection('orders').orderBy('date', 'desc').onSnapshot(
+        snapshot => {
+          const orders = [];
+          snapshot.forEach(doc => {
+            orders.push({ id: doc.id, ...doc.data() });
           });
-        });
-        await batch.commit();
-        console.log('✅ 19 produits de base synchronisés dans Firestore !');
-      }
-    } catch (e) {
-      console.warn('Erreur seedDefaults:', e);
+          callback(orders);
+        },
+        err => {
+          // Si l'index orderBy échoue, tenter sans orderBy
+          db.collection('orders').onSnapshot(snap => {
+            const list = [];
+            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+            list.sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+            callback(list);
+          }, e => console.warn('Firestore listenOrders fallback error:', e));
+        }
+      );
+    } catch(e) {
+      return () => {};
+    }
+  },
+
+  async getOrders() {
+    if (!this.isReady()) return null;
+    try {
+      const snap = await db.collection('orders').get();
+      const list = [];
+      snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      list.sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+      return list;
+    } catch(e) {
+      console.warn('Firestore getOrders error:', e);
+      return null;
+    }
+  },
+
+  async addOrder(order) {
+    if (!this.isReady()) return null;
+    try {
+      const id = order.id || ('CMD-' + Math.floor(1000 + Math.random() * 9000));
+      order.id = id;
+      await db.collection('orders').doc(id).set({
+        ...order,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('✅ Commande enregistrée dans Firebase Firestore:', id);
+      return order;
+    } catch(e) {
+      console.warn('Firestore addOrder error:', e);
+      return null;
+    }
+  },
+
+  async updateOrderStatus(id, newStatus) {
+    if (!this.isReady()) return null;
+    try {
+      await db.collection('orders').doc(id).update({
+        status: newStatus,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return true;
+    } catch(e) {
+      console.warn('Firestore updateOrderStatus error:', e);
+      return false;
+    }
+  },
+
+  async deleteOrder(id) {
+    if (!this.isReady()) return false;
+    try {
+      await db.collection('orders').doc(id).delete();
+      return true;
+    } catch(e) {
+      console.warn('Firestore deleteOrder error:', e);
+      return false;
     }
   }
 };
