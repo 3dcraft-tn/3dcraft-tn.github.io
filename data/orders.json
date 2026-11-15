@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "CMD-3882",
+    "date": "2026-11-15T20:55:02.009Z",
+    "productId": "1794313589428",
+    "productName": "SONY Camera Battery & Memory Card Case",
+    "productPrice": 45,
+    "productCategory": "accessories",
+    "quantity": 2,
+    "totalPrice": "90.00",
+    "customerName": "Ahmed Ben Salem",
+    "customerPhone": "55123456",
+    "customerAddress": "Sousse, Port El Kantaoui",
+    "customerNotes": "Couleur Noir Mat et or, finition soignee svp",
+    "status": "pending"
+  }
+]
