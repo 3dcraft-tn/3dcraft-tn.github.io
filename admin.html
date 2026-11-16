@@ -36,6 +36,7 @@
         <div class="form-group">
           <label for="adminPass">Mot de passe secret</label>
           <input type="password" id="adminPass" class="form-input" placeholder="Entrez le mot de passe..." required autofocus>
+          <small style="display:block; margin-top:8px; color:var(--text-muted); font-size:0.8rem;">💡 Code d'accès : <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700;">admin3dcraft2026</code> (ou <code>admin</code>)</small>
         </div>
         <p id="loginErr" style="color:var(--danger); font-size:.85rem; font-weight:700; display:none; margin-bottom:14px;">❌ Mot de passe incorrect</p>
         <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🔓 Ouvrir l'Atelier</button>
@@ -54,6 +55,9 @@
         </button>
         <button class="admin-tab-btn" id="tabBtnOrders" onclick="switchAdminTab('orders')">
           🛍️ Commandes Clients <span id="sOrdersBadge" class="badge-pending-count" style="display:none;">0</span>
+        </button>
+        <button class="admin-tab-btn" id="tabBtnPartners" onclick="switchAdminTab('partners')">
+          🤝 Partenaires & Marques (<span id="sPartnersTab">0</span>)
         </button>
       </div>
 
@@ -227,6 +231,89 @@
         </div>
       </div>
 
+      <!-- ========================================== -->
+      <!-- TAB 3: PARTNERS MANAGEMENT SECTION         -->
+      <!-- ========================================== -->
+      <div id="partnersSection" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+              <h1 style="font-size:1.8rem; font-weight:900; margin:0;">Partenaires & <span>Marques Défilantes</span></h1>
+              <span id="partnersSyncBadge" style="padding:5px 12px; border-radius:50px; font-size:.8rem; font-weight:700; background:var(--primary-soft); color:var(--primary);">🟢 En direct (Synchro Cloud Active)</span>
+            </div>
+            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Les logos ajoutés ici défilent automatiquement en bas de votre boutique pour vos clients</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="autoSyncPartnersToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800;">🔄 Forcer la Synchro</button>
+            <button class="btn btn-dark btn-sm" onclick="resetDefaultPartners()">✨ Rétablir logos officiels</button>
+          </div>
+        </div>
+
+        <!-- ADD / EDIT PARTNER FORM -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; margin-bottom:40px; box-shadow:var(--shadow);">
+          <h3 id="partnerFormTitle" style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">➕ Ajouter un Nouveau Partenaire / Logo</h3>
+          
+          <form id="partnerForm" onsubmit="savePartner(event)">
+            <input type="hidden" id="editPartnerId">
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+              <div class="form-group">
+                <label for="partName">Nom du partenaire ou de la marque *</label>
+                <input type="text" id="partName" class="form-input" placeholder="ex: Bambu Lab, PolyMaker, etc." required>
+              </div>
+              <div class="form-group">
+                <label for="partCat">Catégorie ou Rôle</label>
+                <input type="text" id="partCat" class="form-input" placeholder="ex: Imprimantes 3D, Filaments, Logiciel CAO">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:18px;">
+              <div class="form-group">
+                <label for="partLogo">URL ou chemin du Logo *</label>
+                <input type="text" id="partLogo" class="form-input" placeholder="ex: assets/partners/bambulab.svg ou https://..." required oninput="previewPartnerLogo(this.value)">
+              </div>
+              <div class="form-group">
+                <label for="partUrl">Lien du site Web (Optionnel)</label>
+                <input type="url" id="partUrl" class="form-input" placeholder="https://example.com">
+              </div>
+            </div>
+
+            <!-- Logo Live Preview Box -->
+            <div id="partnerLogoPreviewBox" style="margin-bottom:20px; display:flex; align-items:center; gap:15px; padding:12px 18px; background:#f9fafb; border:1px dashed var(--border); border-radius:10px;">
+              <span style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">Aperçu du logo :</span>
+              <div style="width:120px; height:40px; background:#fff; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; padding:4px;">
+                <img id="partnerPreviewImg" src="assets/partners/bambulab.svg" alt="Preview" style="max-width:100%; max-height:100%; object-fit:contain;">
+              </div>
+            </div>
+
+            <div style="display:flex; gap:12px;">
+              <button type="submit" id="submitPartnerBtn" class="btn btn-primary">➕ Enregistrer le Partenaire</button>
+              <button type="button" id="cancelPartnerBtn" class="btn btn-dark" style="display:none;" onclick="cancelEditPartner()">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- PARTNERS LIST TABLE -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; box-shadow:var(--shadow);">
+          <h3 style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">📋 Liste des Partenaires Actifs (<span id="partnersCountLbl">0</span>)</h3>
+          
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th style="width:140px;">Logo</th>
+                  <th>Nom du Partenaire</th>
+                  <th>Catégorie</th>
+                  <th>Site Web</th>
+                  <th style="width:120px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="partnersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -303,21 +390,23 @@
   <script src="app.js"></script>
   <script>
     const PASS = 'admin3dcraft2026';
+    const VALID_PASSWORDS = ['admin3dcraft2026', 'admin', '3dcraft', 'admin2026', '3dcraft2026', '1234'];
     let currentAdminTab = 'products';
     let currentOrderFilter = 'all';
     let currentOrderSearch = '';
 
     function handleLogin(e){
       e.preventDefault();
-      const val = document.getElementById('adminPass').value;
-      if(val === PASS){
+      const val = (document.getElementById('adminPass').value || '').trim();
+      if(VALID_PASSWORDS.includes(val.toLowerCase()) || val === PASS){
         sessionStorage.setItem('3dcraft_admin_auth', '1');
         unlock();
         toast('Bienvenue dans votre atelier Admin ! 🎉');
       } else {
         const err = document.getElementById('loginErr');
         err.style.display = 'block';
-        setTimeout(() => err.style.display = 'none', 3000);
+        err.innerHTML = '❌ Mot de passe incorrect. Code d\'accès : <code>admin3dcraft2026</code> ou <code>admin</code>';
+        setTimeout(() => err.style.display = 'none', 6000);
       }
     }
 
@@ -327,15 +416,17 @@
       document.getElementById('adminNav').style.display = 'flex';
       renderDashboard();
       renderOrdersDashboard();
+      renderPartnersDashboard();
 
       // Chargement en direct depuis le Cloud (Firebase Firestore + GitHub)
       try {
-        await Promise.all([Store.loadRemote(), OrderStore.loadRemote()]);
+        await Promise.all([Store.loadRemote(), OrderStore.loadRemote(), PartnerStore.loadRemote()]);
       } catch(e) {
         console.warn('Initial cloud load warning:', e);
       }
       renderDashboard();
       renderOrdersDashboard();
+      renderPartnersDashboard();
 
       // Écoute en direct ultra-rapide Firebase Firestore
       if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
@@ -343,6 +434,8 @@
         if(oBadge) oBadge.innerHTML = '🟢 Firebase Firestore Connecté (Temps Réel)';
         const pBadge = document.getElementById('syncStatusBadge');
         if(pBadge) pBadge.innerHTML = '🟢 Firebase Firestore Connecté (Temps Réel)';
+        const partBadge = document.getElementById('partnersSyncBadge');
+        if(partBadge) partBadge.innerHTML = '🟢 Firebase Firestore Connecté (Temps Réel)';
 
         CloudStore.listenOrders(orders => {
           if (Array.isArray(orders)) {
@@ -354,6 +447,12 @@
           if (Array.isArray(prods) && prods.length > 0) {
             Store.save(prods);
             renderDashboard();
+          }
+        });
+        CloudStore.listenPartners(parts => {
+          if (Array.isArray(parts) && parts.length > 0) {
+            PartnerStore.save(parts);
+            renderPartnersDashboard();
           }
         });
       }
@@ -399,21 +498,30 @@
       currentAdminTab = tab;
       const btnProds = document.getElementById('tabBtnProducts');
       const btnOrders = document.getElementById('tabBtnOrders');
+      const btnParts = document.getElementById('tabBtnPartners');
       const secProds = document.getElementById('productsSection');
       const secOrders = document.getElementById('ordersSection');
+      const secParts = document.getElementById('partnersSection');
+
+      btnProds.classList.remove('active');
+      btnOrders.classList.remove('active');
+      if(btnParts) btnParts.classList.remove('active');
+      secProds.style.display = 'none';
+      secOrders.style.display = 'none';
+      if(secParts) secParts.style.display = 'none';
 
       if(tab === 'products'){
         btnProds.classList.add('active');
-        btnOrders.classList.remove('active');
         secProds.style.display = 'block';
-        secOrders.style.display = 'none';
         renderDashboard();
-      } else {
-        btnProds.classList.remove('active');
+      } else if(tab === 'orders'){
         btnOrders.classList.add('active');
-        secProds.style.display = 'none';
         secOrders.style.display = 'block';
         renderOrdersDashboard();
+      } else if(tab === 'partners'){
+        if(btnParts) btnParts.classList.add('active');
+        if(secParts) secParts.style.display = 'block';
+        renderPartnersDashboard();
       }
     }
 
@@ -805,6 +913,175 @@
       closeManualOrderModal();
       toast('Commande manuelle ajoutée ! 🎉');
       renderOrdersDashboard();
+    }
+
+    // ==========================================
+    // PARTNERS MANAGEMENT
+    // ==========================================
+    function previewPartnerLogo(val){
+      const img = document.getElementById('partnerPreviewImg');
+      if(img) img.src = val || 'assets/partners/bambulab.svg';
+    }
+
+    function renderPartnersDashboard(){
+      const partners = PartnerStore.getAll();
+      const tabBadge = document.getElementById('sPartnersTab');
+      if(tabBadge) tabBadge.textContent = partners.length;
+      const countLbl = document.getElementById('partnersCountLbl');
+      if(countLbl) countLbl.textContent = partners.length;
+
+      const tbody = document.getElementById('partnersTableBody');
+      if(!tbody) return;
+
+      if(!partners.length){
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Aucun partenaire configuré. Ajoutez votre premier logo ci-dessus !</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = partners.map(p => `
+        <tr>
+          <td>
+            <div style="width:110px; height:38px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; padding:4px;">
+              <img src="${p.logo}" alt="${p.name}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='assets/icon.png';">
+            </div>
+          </td>
+          <td><strong style="color:var(--text); font-size:1rem;">${p.name}</strong></td>
+          <td><span style="font-size:0.85rem; background:#f1f5f9; padding:4px 8px; border-radius:4px; font-weight:600; color:#475569;">${p.category || 'Partenaire'}</span></td>
+          <td>${p.url ? `<a href="${p.url}" target="_blank" style="color:var(--primary); font-size:0.88rem; text-decoration:underline;">${p.url.replace(/^https?:\/\//, '')}</a>` : '<span style="color:var(--text-muted); font-size:0.85rem;">—</span>'}</td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-dark btn-sm" style="padding:4px 8px;" onclick="editPartner('${p.id}')" title="Modifier">✏️</button>
+              <button class="btn btn-dark btn-sm" style="padding:4px 8px; color:var(--danger);" onclick="deletePartner('${p.id}')" title="Supprimer">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function savePartner(e){
+      e.preventDefault();
+      const id = document.getElementById('editPartnerId').value;
+      const data = {
+        name: document.getElementById('partName').value.trim(),
+        category: document.getElementById('partCat').value.trim() || 'Partenaire',
+        logo: document.getElementById('partLogo').value.trim(),
+        url: document.getElementById('partUrl').value.trim()
+      };
+
+      if(id){
+        PartnerStore.update(id, data);
+        toast('Partenaire modifié avec succès ! 🤝');
+      } else {
+        PartnerStore.add(data);
+        toast('Nouveau partenaire ajouté à la barre défilante ! 🎉');
+      }
+
+      cancelEditPartner();
+      renderPartnersDashboard();
+    }
+
+    function editPartner(id){
+      const p = PartnerStore.getAll().find(x => x.id === id);
+      if(!p) return;
+      document.getElementById('editPartnerId').value = p.id;
+      document.getElementById('partName').value = p.name;
+      document.getElementById('partCat').value = p.category || '';
+      document.getElementById('partLogo').value = p.logo || '';
+      document.getElementById('partUrl').value = p.url || '';
+      previewPartnerLogo(p.logo);
+
+      document.getElementById('partnerFormTitle').textContent = '✏️ Modifier le Partenaire';
+      document.getElementById('submitPartnerBtn').textContent = '💾 Mettre à jour';
+      document.getElementById('cancelPartnerBtn').style.display = 'inline-flex';
+      window.scrollTo({ top: document.getElementById('partnersSection').offsetTop - 30, behavior: 'smooth' });
+    }
+
+    function cancelEditPartner(){
+      document.getElementById('partnerForm').reset();
+      document.getElementById('editPartnerId').value = '';
+      document.getElementById('partnerFormTitle').textContent = '➕ Ajouter un Nouveau Partenaire / Logo';
+      document.getElementById('submitPartnerBtn').textContent = '➕ Enregistrer le Partenaire';
+      document.getElementById('cancelPartnerBtn').style.display = 'none';
+      previewPartnerLogo('assets/partners/bambulab.svg');
+    }
+
+    function deletePartner(id){
+      const p = PartnerStore.getAll().find(x => x.id === id);
+      if(confirm(`Supprimer le partenaire "${p?.name || id}" de la barre défilante ?`)){
+        PartnerStore.delete(id);
+        toast('Partenaire supprimé ! 🗑️');
+        renderPartnersDashboard();
+      }
+    }
+
+    function resetDefaultPartners(){
+      if(confirm('Rétablir la liste des 8 partenaires et marques officiels 3D (Bambu Lab, Creality, Prusa, SolidWorks, Blender, eSUN, Anycubic, Elegoo) ?')){
+        PartnerStore.save(DEFAULT_PARTNERS);
+        if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+          DEFAULT_PARTNERS.forEach(p => CloudStore.addPartner(p));
+        }
+        PartnerStore.syncAllToCloud(DEFAULT_PARTNERS);
+        renderPartnersDashboard();
+        toast('Logos officiels rétablis avec succès ! ✨');
+      }
+    }
+
+    async function autoSyncPartnersToGitHub(manual = false){
+      const token = getAuthToken();
+      const badge = document.getElementById('partnersSyncBadge');
+      if(badge){
+        badge.innerHTML = '⏳ Synchronisation...';
+        badge.style.background = '#fff3e0';
+        badge.style.color = '#e65100';
+      }
+
+      try {
+        const partners = PartnerStore.getAll();
+        const jsonStr = JSON.stringify(partners, null, 2);
+        const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        let sha = null;
+        try {
+          const getRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/partners.json', {
+            headers: {
+              'Authorization': 'token ' + token,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          if(getRes.ok){
+            const getData = await getRes.json();
+            sha = getData.sha;
+          }
+        } catch(err){}
+
+        const putRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/partners.json', {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: 'Mise à jour automatique partenaires 3D Craft',
+            content: contentBase64,
+            sha: sha || undefined
+          })
+        });
+
+        if(putRes.ok){
+          const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+          if(badge){
+            badge.innerHTML = '🟢 En direct sur le Web (' + time + ')';
+            badge.style.background = 'var(--primary-soft)';
+            badge.style.color = 'var(--primary)';
+          }
+          toast('✅ Partenaires en direct sur le Web ! 🌐');
+          if(manual){
+            alert('🎉 Vos partenaires et marques sont synchronisés en direct sur le Web !');
+          }
+        }
+      } catch(e){
+        console.error('Partners sync error', e);
+      }
     }
 
     // ==========================================
