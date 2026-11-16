@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+    <g transform="translate(10, 10)">
+      <rect x="2" y="2" width="36" height="36" rx="8" fill="#0052CC"/>
+      <path d="M10 28 L20 12 L30 28 Z" stroke="#FFFFFF" stroke-width="3" fill="none"/>
+    </g>
+    <text x="58" y="38" font-family="'Inter', sans-serif" font-size="20" font-weight="900" fill="#0052CC" letter-spacing="1">ANYCUBIC</text>
+  </svg>
