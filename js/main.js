@@ -379,7 +379,34 @@ const OrderStore = {
 // ==========================================
 // CATEGORIES & EMOJIS
 // ==========================================
+const CATS = {
+  'home-decor': { name: 'Décoration Maison', icon: '🏠', desc: 'Vases, veilleuses, lampes et serre-livres' },
+  'gaming': { name: 'Gaming Setup', icon: '🎮', desc: 'Supports de manettes, casques et touches custom' },
+  'anime': { name: 'Anime & Figurines', icon: '⚔️', desc: 'Statues et figurines haute définition' },
+  'toys': { name: 'Jouets & Gadgets', icon: '🧸', desc: 'Jouets articulés, flexi-rex et casse-têtes' },
+  'accessories': { name: 'Accessoires Bureau', icon: '🎧', desc: 'Supports smartphone, range-câbles et utilitaires' },
+  'tools': { name: 'Outils & Atelier', icon: '🔧', desc: 'Rangements d\'outils, calibres et gabarits de mesure' },
+  'gifts': { name: 'Idées Cadeaux', icon: '🎁', desc: 'Lithophanies photo, boîtes secrètes et surprises' },
+  'keychains': { name: 'Porte-clés Custom', icon: '🔑', desc: 'Porte-clés prénom bicolore, logos auto et codes Spotify' }
+};
+
+const EMOJIS = {
+  'home-decor': ['🏺', '🪴', '💡', '🏠'],
+  'gaming': ['🎮', '🕹️', '⌨️', '🎧'],
+  'anime': ['⚔️', '🐉', '🎭', '🗡️'],
+  'toys': ['🧸', '🤖', '🦕', '🚀'],
+  'accessories': ['📱', '⌚', '💼', '🧲'],
+  'tools': ['🔧', '🛠️', '📐', '⚙️'],
+  'gifts': ['🎁', '💝', '✨', '🎀'],
+  'keychains': ['🔑', '🏷️', '🚗', '🎵']
+};
+
 const Categories = CATS;
+
+function getEmoji(cat, i = 0) {
+  const a = EMOJIS[cat] || ['📦'];
+  return a[i % a.length];
+}
 
 // Backward-compatibility aliases for category pages
 const ProductStore = {
@@ -422,27 +449,169 @@ function renderProductsGrid(containerId, products) {
   }
   container.innerHTML = products.map((p, i) => cardHTML(p, i)).join('');
 }
-const CATS = {
-  'home-decor': { name: 'Décoration Maison', icon: '🏠', desc: 'Vases, veilleuses, lampes et serre-livres' },
-  'gaming': { name: 'Gaming Setup', icon: '🎮', desc: 'Supports de manettes, casques et touches custom' },
-  'anime': { name: 'Anime & Figurines', icon: '⚔️', desc: 'Statues et figurines haute définition' },
-  'toys': { name: 'Jouets & Gadgets', icon: '🧸', desc: 'Jouets articulés, flexi-rex et casse-têtes' },
-  'accessories': { name: 'Accessoires Bureau', icon: '🎧', desc: 'Supports smartphone, range-câbles et utilitaires' },
-  'tools': { name: 'Outils & Atelier', icon: '🔧', desc: 'Rangements d\'outils, calibres et gabarits de mesure' },
-  'gifts': { name: 'Idées Cadeaux', icon: '🎁', desc: 'Lithophanies photo, boîtes secrètes et surprises' },
-  'keychains': { name: 'Porte-clés Custom', icon: '🔑', desc: 'Porte-clés prénom bicolore, logos auto et codes Spotify' }
+
+// ==========================================
+// PARTNERSTORE - Partners & Logos Management
+// ==========================================
+const DEFAULT_PARTNERS = [
+  { id: '1', name: 'Bambu Lab', logo: 'assets/partners/bambulab.svg', url: 'https://bambulab.com', category: '3D Printers' },
+  { id: '2', name: 'Creality 3D', logo: 'assets/partners/creality.svg', url: 'https://www.creality.com', category: '3D Printers' },
+  { id: '3', name: 'Prusa Research', logo: 'assets/partners/prusa.svg', url: 'https://www.prusa3d.com', category: '3D Printers' },
+  { id: '4', name: 'SolidWorks', logo: 'assets/partners/solidworks.svg', url: 'https://www.solidworks.com', category: 'CAD Software' },
+  { id: '5', name: 'Blender 3D', logo: 'assets/partners/blender.svg', url: 'https://www.blender.org', category: '3D Software' },
+  { id: '6', name: 'eSUN Filament', logo: 'assets/partners/esun.svg', url: 'https://www.esun3d.com', category: 'Materials' },
+  { id: '7', name: 'Anycubic', logo: 'assets/partners/anycubic.svg', url: 'https://www.anycubic.com', category: 'Resin & FDM' },
+  { id: '8', name: 'Elegoo', logo: 'assets/partners/elegoo.svg', url: 'https://www.elegoo.com', category: 'Resin 3D' }
+];
+
+const PartnerStore = {
+  KEY: '3dcraft_partners',
+
+  getAll() {
+    const d = localStorage.getItem(this.KEY);
+    try {
+      const parsed = d ? JSON.parse(d) : [];
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PARTNERS;
+    } catch(e) {
+      return DEFAULT_PARTNERS;
+    }
+  },
+
+  save(partners) {
+    localStorage.setItem(this.KEY, JSON.stringify(partners || []));
+  },
+
+  async loadRemote() {
+    // 0. Essai Firebase Firestore
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      try {
+        const fire = await CloudStore.getPartners();
+        if (Array.isArray(fire) && fire.length > 0) {
+          this.save(fire);
+          return fire;
+        }
+      } catch(e) {
+        console.warn('Firestore loadRemote partners fallback', e);
+      }
+    }
+
+    // 1. Essai JSON relatif
+    const isSub = window.location.pathname.includes('/pages/');
+    const relUrl = (isSub ? '../data/partners.json' : 'data/partners.json') + '?t=' + Date.now();
+    try {
+      const res = await fetch(relUrl);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          this.save(list);
+          return list;
+        }
+      }
+    } catch(e) {
+      console.warn('Relative partners fetch fallback', e);
+    }
+
+    return this.getAll();
+  },
+
+  add(partner) {
+    const list = this.getAll();
+    partner.id = partner.id || Date.now().toString();
+    list.push(partner);
+    this.save(list);
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.addPartner(partner).catch(e => console.warn('CloudStore addPartner err', e));
+    }
+    this.syncAllToCloud(list).catch(e => console.warn('Cloud sync partners err', e));
+    return partner;
+  },
+
+  update(id, updated) {
+    const list = this.getAll();
+    const idx = list.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...updated };
+      this.save(list);
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        CloudStore.updatePartner(id, list[idx]).catch(e => console.warn('CloudStore updatePartner err', e));
+      }
+      this.syncAllToCloud(list).catch(e => console.warn('Cloud sync partners err', e));
+      return list[idx];
+    }
+    return null;
+  },
+
+  delete(id) {
+    const list = this.getAll().filter(p => p.id !== id);
+    this.save(list);
+    if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+      CloudStore.deletePartner(id).catch(e => console.warn('CloudStore deletePartner err', e));
+    }
+    this.syncAllToCloud(list).catch(e => console.warn('Cloud sync partners err', e));
+    return list;
+  },
+
+  async syncAllToCloud(partners) {
+    const token = getCloudToken();
+    if (!token) return;
+    try {
+      const jsonStr = JSON.stringify(partners, null, 2);
+      const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
+      let sha = null;
+      try {
+        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/partners.json`, {
+          headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (getRes.ok) {
+          const json = await getRes.json();
+          sha = json.sha;
+        }
+      } catch(e) {}
+
+      await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/partners.json`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Update partners list',
+          content: contentBase64,
+          sha: sha || undefined
+        })
+      });
+    } catch(e) {
+      console.warn('syncAllToCloud partners error', e);
+    }
+  }
 };
 
-const EMOJIS = {
-  'home-decor': ['🏺', '🪴', '💡', '🏠'],
-  'gaming': ['🎮', '🕹️', '⌨️', '🎧'],
-  'anime': ['⚔️', '🐉', '🎭', '🗡️'],
-  'toys': ['🧸', '🤖', '🦕', '🚀'],
-  'accessories': ['📱', '⌚', '💼', '🧲'],
-  'tools': ['🔧', '🛠️', '📐', '⚙️'],
-  'gifts': ['🎁', '💝', '✨', '🎀'],
-  'keychains': ['🔑', '🏷️', '🚗', '🎵']
-};
+function renderPartnersMarquee(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const partners = PartnerStore.getAll();
+  if (!partners || partners.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+
+  // Double the list for seamless continuous infinite marquee
+  const loopList = [...partners, ...partners];
+
+  const cardsHtml = loopList.map(p => `
+    <a href="${p.url || '#'}" target="${p.url ? '_blank' : '_self'}" class="partner-card" title="${p.name} - Partenaire officiel 3D Craft" rel="noopener">
+      <div class="partner-logo-wrap">
+        <img src="${p.logo}" alt="${p.name}" loading="lazy" onerror="this.onerror=null; this.src='assets/icon.png';">
+      </div>
+      <span class="partner-name">${p.name}</span>
+    </a>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="partner-marquee-track">
+      ${cardsHtml}
+    </div>
+  `;
+}
 
 function getEmoji(cat, i = 0) {
   const a = EMOJIS[cat] || ['📦'];
