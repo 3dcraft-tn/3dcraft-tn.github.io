@@ -951,23 +951,36 @@ input, textarea, select {
   color: var(--text-muted);
 }
 
-.product-action {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: #ffffff;
-  display: flex;
+.product-action,
+.product-order-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
   transition: var(--transition);
   box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-.product-action:hover {
-  transform: scale(1.1);
+.product-action:hover,
+.product-order-btn:hover {
+  transform: translateY(-2px);
   background: var(--primary-dark);
+  box-shadow: 0 6px 16px var(--primary-glow);
+}
+
+.product-action:active,
+.product-order-btn:active {
+  transform: translateY(0);
 }
 
 /* ---------- Services Section with Background Images ---------- */
