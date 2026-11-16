@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 60" fill="none">
+    <g transform="translate(10, 10)">
+      <path d="M4 14 L20 4 L36 14 L36 32 L20 42 L4 32 Z" fill="#E60012"/>
+      <path d="M20 4 L20 42" stroke="#FFFFFF" stroke-width="2"/>
+      <path d="M4 14 L36 32" stroke="#FFFFFF" stroke-width="2"/>
+      <path d="M36 14 L4 32" stroke="#FFFFFF" stroke-width="2"/>
+    </g>
+    <text x="56" y="32" font-family="'Inter', sans-serif" font-size="18" font-weight="900" fill="#E60012" letter-spacing="0.5">SOLIDWORKS</text>
+    <text x="56" y="44" font-family="'Inter', sans-serif" font-size="9" font-weight="700" fill="#64748b" letter-spacing="1">DASSAULT SYSTÈMES</text>
+  </svg>
