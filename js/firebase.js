@@ -187,5 +187,77 @@ const CloudStore = {
       console.warn('Firestore deleteOrder error:', e);
       return false;
     }
+  },
+
+  // ================= PARTNERS =================
+  listenPartners(callback) {
+    if (!this.isReady()) return () => {};
+    try {
+      return db.collection('partners').onSnapshot(
+        snapshot => {
+          const list = [];
+          snapshot.forEach(doc => {
+            list.push({ id: doc.id, ...doc.data() });
+          });
+          callback(list);
+        },
+        err => console.warn('Firestore listenPartners error:', err)
+      );
+    } catch(e) {
+      return () => {};
+    }
+  },
+
+  async getPartners() {
+    if (!this.isReady()) return null;
+    try {
+      const snap = await db.collection('partners').get();
+      const list = [];
+      snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      return list;
+    } catch(e) {
+      console.warn('Firestore getPartners error:', e);
+      return null;
+    }
+  },
+
+  async addPartner(partner) {
+    if (!this.isReady()) return null;
+    try {
+      const id = partner.id || Date.now().toString();
+      await db.collection('partners').doc(id).set({
+        ...partner,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return { id, ...partner };
+    } catch(e) {
+      console.warn('Firestore addPartner error:', e);
+      return null;
+    }
+  },
+
+  async updatePartner(id, data) {
+    if (!this.isReady()) return null;
+    try {
+      await db.collection('partners').doc(id).set({
+        ...data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return { id, ...data };
+    } catch(e) {
+      console.warn('Firestore updatePartner error:', e);
+      return null;
+    }
+  },
+
+  async deletePartner(id) {
+    if (!this.isReady()) return false;
+    try {
+      await db.collection('partners').doc(id).delete();
+      return true;
+    } catch(e) {
+      console.warn('Firestore deletePartner error:', e);
+      return false;
+    }
   }
 };
