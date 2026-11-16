@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+    <g transform="translate(12, 10)">
+      <path d="M20 2 L36 12 L36 30 L20 40 L4 30 L4 12 Z" stroke="#00B4D8" stroke-width="3.5" fill="none"/>
+      <path d="M20 12 L30 18 L30 28 L20 34 L10 28 L10 18 Z" fill="#00B4D8"/>
+    </g>
+    <text x="62" y="37" font-family="'Inter', sans-serif" font-size="21" font-weight="900" fill="#0f172a" letter-spacing="0.5">CREALITY</text>
+  </svg>
