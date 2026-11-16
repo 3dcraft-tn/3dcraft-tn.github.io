@@ -373,6 +373,17 @@
     </section>
   </main>
 
+  <!-- PARTNERS MOVING BAR -->
+  <section class="partners-section" id="partners">
+    <div class="container">
+      <div class="partners-header">
+        <h2>Nos <span>Partenaires & Marques</span> de Confiance</h2>
+        <p>Technologies de pointe, matériaux certifiés et logiciels de CAO professionnels</p>
+      </div>
+    </div>
+    <div class="partner-marquee-wrapper" id="partnerMarquee"></div>
+  </section>
+
   <!-- FOOTER -->
   <footer class="footer" id="contact">
     <div class="container">
@@ -505,6 +516,9 @@
       const featGrid = document.getElementById('featuredGrid');
       if (feat.length > 0) {
         featGrid.innerHTML = feat.map((p, i) => cardHTML(p, i)).join('');
+      } else if (all.length > 0) {
+        // Si aucun article n'est marqué en vedette, afficher les articles disponibles
+        featGrid.innerHTML = all.map((p, i) => cardHTML(p, i)).join('');
       } else {
         featGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; background: #fff; border: 1px dashed var(--border); border-radius: var(--radius-lg);"><div style="font-size: 2.2rem; margin-bottom: 10px;">📦</div><h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 6px;">Aucun produit pour le moment</h3><p style="color: var(--text-muted); font-size: 0.88rem; max-width: 440px; margin: 0 auto 16px;">Ajoutez vos créations depuis l\'espace d\'administration pour les afficher ici.</p><a href="admin.html" class="btn btn-primary btn-sm">➕ Espace Admin</a></div>';
       }
@@ -521,10 +535,44 @@
       if(CATS[h]) showCategory(h);
       else loadHome();
 
-      // Synchronisation en arrière-plan avec data/products.json
-      await Store.loadRemote();
+      // Rendu initial des partenaires défilants
+      if (typeof renderPartnersMarquee === 'function') {
+        renderPartnersMarquee('partnerMarquee');
+      }
+
+      // Synchronisation en arrière-plan avec le Cloud (Firebase Firestore + JSON local)
+      try {
+        await Promise.all([Store.loadRemote(), PartnerStore.loadRemote()]);
+      } catch(e) {
+        console.warn('Initial loadRemote warning:', e);
+      }
+
       if(activeCat) renderCategoryProducts();
       else loadHome();
+
+      if (typeof renderPartnersMarquee === 'function') {
+        renderPartnersMarquee('partnerMarquee');
+      }
+
+      // Écoute en direct ultra-rapide Firebase Firestore
+      if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+        CloudStore.listenProducts(prods => {
+          if (Array.isArray(prods) && prods.length > 0) {
+            Store.save(prods);
+            if (activeCat) renderCategoryProducts();
+            else loadHome();
+          }
+        });
+
+        CloudStore.listenPartners(parts => {
+          if (Array.isArray(parts) && parts.length > 0) {
+            PartnerStore.save(parts);
+            if (typeof renderPartnersMarquee === 'function') {
+              renderPartnersMarquee('partnerMarquee');
+            }
+          }
+        });
+      }
     });
   </script>
 
