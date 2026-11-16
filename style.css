@@ -98,8 +98,9 @@ input,textarea,select{font-family:inherit;outline:none}
 .product-foot{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border)}
 .product-price{font-size:1.3rem;font-weight:900;color:var(--primary)}
 .product-price span{font-size:.8rem;font-weight:600;color:var(--text-muted)}
-.product-order-btn{width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:var(--transition);box-shadow:0 4px 10px var(--primary-glow)}
-.product-order-btn:hover{transform:scale(1.1);background:var(--primary-dark)}
+.product-order-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px var(--primary-glow);transition:var(--transition)}
+.product-order-btn:hover{background:var(--primary-dark);transform:translateY(-2px);box-shadow:0 6px 16px var(--primary-glow)}
+.product-order-btn:active{transform:translateY(0)}
 
 /* Services with Background Image */
 .services-section{padding:80px 0;background:var(--bg-section)}
