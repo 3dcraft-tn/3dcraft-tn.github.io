@@ -1087,18 +1087,8 @@
     // ==========================================
     // GITHUB SYNCHRONIZATION
     // ==========================================
-    const SEC_PAYLOAD = '060c1d362162263a2b591f40785c6a5e2e570b231b7009222706053a76535c54001e595e05600d0f';
-
-    function xorDec(hex, key) {
-      let bytes = [];
-      for (let i = 0; i < hex.length; i += 2) {
-        bytes.push(parseInt(hex.substr(i, 2), 16));
-      }
-      return bytes.map((b, i) => String.fromCharCode(b ^ key.charCodeAt(i % key.length))).join('');
-    }
-
     function getAuthToken() {
-      return localStorage.getItem('3dcraft_gh_token') || xorDec(SEC_PAYLOAD, PASS);
+      return typeof getCloudToken === 'function' ? getCloudToken() : (localStorage.getItem('3dcraft_gh_token') || '');
     }
 
     async function autoSyncToGitHub(manual = false){
