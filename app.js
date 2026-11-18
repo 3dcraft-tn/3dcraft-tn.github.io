@@ -455,8 +455,8 @@ function renderProductsGrid(containerId, products) {
 // ==========================================
 const DEFAULT_PARTNERS = [
   { id: '1', name: 'Bambu Lab', logo: 'assets/partners/bambulab.svg', url: 'https://bambulab.com', category: '3D Printers' },
-  { id: '2', name: 'Creality 3D', logo: 'assets/partners/creality.svg', url: 'https://www.creality.com', category: '3D Printers' },
-  { id: '3', name: 'Prusa Research', logo: 'assets/partners/prusa.svg', url: 'https://www.prusa3d.com', category: '3D Printers' },
+  { id: '2', name: 'technomaker', logo: 'https://scontent.ftun16-1.fna.fbcdn.net/v/t39.30808-6/903552407_1453761400281532_8285187849921190643_n.avif?stp=dst-jpg_tt6&cstp=mx598x476&ctp=s598x476&_nc_cat=105&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=tfdoKnb_jUcQ7kNvwGJqe-T&_nc_oc=AdrRHstbI1jW_tVfnfxFKv30zWkdG2KWJVQloPPE67uwG2vLDD6tMlstf1Sxtp8MOKk&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=vNmaMuBx62uojlJonyxAhg&_nc_ss=7b2a8&oh=00_AQQ0bG-i53AmD-RhYvibEIcgxNrZ2vPVUlH4igfsFHTblA&oe=6B03EC94', url: 'https://www.facebook.com/Technomaker.tn/', category: 'Robotic Club' },
+  { id: '3', name: 'Little-son', logo: 'https://little-son.tn/img/logo-1682280363.jpg', url: 'https://little-son.tn/', category: 'Materials' },
   { id: '4', name: 'SolidWorks', logo: 'assets/partners/solidworks.svg', url: 'https://www.solidworks.com', category: 'CAD Software' },
   { id: '5', name: 'Blender 3D', logo: 'assets/partners/blender.svg', url: 'https://www.blender.org', category: '3D Software' },
   { id: '6', name: 'eSUN Filament', logo: 'assets/partners/esun.svg', url: 'https://www.esun3d.com', category: 'Materials' },
