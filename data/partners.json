@@ -26,12 +26,5 @@
     "logo": "assets/partners/esun.svg",
     "url": "https://www.esun3d.com",
     "name": "eSUN Filament"
-  },
-  {
-    "id": "8",
-    "category": "Resin 3D",
-    "url": "https://www.elegoo.com",
-    "logo": "assets/partners/elegoo.svg",
-    "name": "Elegoo"
   }
 ]
