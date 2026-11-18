@@ -1,18 +1,15 @@
 [
   {
-    "productId": "1794278107160",
-    "productName": "Porte-stylo Samouraï",
-    "productPrice": 45,
-    "productCategory": "home-decor",
-    "productImage": "https://cloudtiktak.com/media/static/media/Gemini_Generated_Image_x13r0hx13r0hx13r.jfif",
-    "quantity": 1,
+    "id": "CMD-FIREBASE-7600",
     "totalPrice": "45.00",
-    "customerName": "mohamed ali jaouadi",
-    "customerPhone": "99613217",
-    "customerAddress": "kairouan trik hafouz",
-    "customerNotes": "noir",
+    "productPrice": 45,
+    "customerNotes": "Couleur noire mat",
+    "customerAddress": "Tunis, Avenue Habib Bourguiba",
+    "date": "2026-11-15T22:35:29.178Z",
+    "productName": "Porte-stylo Samouraï",
     "status": "pending",
-    "id": "CMD-4504",
-    "date": "2026-11-18T18:06:35.167Z"
+    "customerPhone": "21646595833",
+    "quantity": 1,
+    "customerName": "Client Test Firebase"
   }
 ]
