@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "productId": "1794278107160",
+    "productName": "Porte-stylo Samouraï",
+    "productPrice": 45,
+    "productCategory": "home-decor",
+    "productImage": "https://cloudtiktak.com/media/static/media/Gemini_Generated_Image_x13r0hx13r0hx13r.jfif",
+    "quantity": 1,
+    "totalPrice": "45.00",
+    "customerName": "mohamed ali jaouadi",
+    "customerPhone": "99613217",
+    "customerAddress": "kairouan trik hafouz",
+    "customerNotes": "noir",
+    "status": "pending",
+    "id": "CMD-4504",
+    "date": "2026-11-18T18:06:35.167Z"
+  }
+]
