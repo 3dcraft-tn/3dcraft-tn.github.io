@@ -2,29 +2,57 @@
   {
     "id": "1",
     "name": "Bambu Lab",
-    "category": "3D Printers",
+    "logo": "assets/partners/bambulab.svg",
     "url": "https://bambulab.com",
-    "logo": "assets/partners/bambulab.svg"
+    "category": "3D Printers"
+  },
+  {
+    "id": "2",
+    "name": "Creality 3D",
+    "logo": "assets/partners/creality.svg",
+    "url": "https://www.creality.com",
+    "category": "3D Printers"
+  },
+  {
+    "id": "3",
+    "name": "Prusa Research",
+    "logo": "assets/partners/prusa.svg",
+    "url": "https://www.prusa3d.com",
+    "category": "3D Printers"
   },
   {
     "id": "4",
     "name": "SolidWorks",
-    "category": "CAD Software",
+    "logo": "assets/partners/solidworks.svg",
     "url": "https://www.solidworks.com",
-    "logo": "assets/partners/solidworks.svg"
+    "category": "CAD Software"
   },
   {
     "id": "5",
     "name": "Blender 3D",
+    "logo": "assets/partners/blender.svg",
     "url": "https://www.blender.org",
-    "category": "3D Software",
-    "logo": "assets/partners/blender.svg"
+    "category": "3D Software"
   },
   {
     "id": "6",
-    "category": "Materials",
+    "name": "eSUN Filament",
     "logo": "assets/partners/esun.svg",
     "url": "https://www.esun3d.com",
-    "name": "eSUN Filament"
+    "category": "Materials"
+  },
+  {
+    "id": "7",
+    "name": "Anycubic",
+    "logo": "assets/partners/anycubic.svg",
+    "url": "https://www.anycubic.com",
+    "category": "Resin & FDM"
+  },
+  {
+    "id": "8",
+    "name": "Elegoo",
+    "logo": "assets/partners/elegoo.svg",
+    "url": "https://www.elegoo.com",
+    "category": "Resin 3D"
   }
 ]
