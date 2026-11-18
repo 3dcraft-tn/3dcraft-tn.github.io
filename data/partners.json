@@ -7,13 +7,6 @@
     "logo": "assets/partners/bambulab.svg"
   },
   {
-    "id": "2",
-    "logo": "assets/partners/creality.svg",
-    "url": "https://www.creality.com",
-    "name": "Creality 3D",
-    "category": "3D Printers"
-  },
-  {
     "id": "4",
     "name": "SolidWorks",
     "category": "CAD Software",
