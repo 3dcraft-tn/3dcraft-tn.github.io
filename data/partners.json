@@ -28,13 +28,6 @@
     "name": "eSUN Filament"
   },
   {
-    "id": "7",
-    "logo": "assets/partners/anycubic.svg",
-    "url": "https://www.anycubic.com",
-    "name": "Anycubic",
-    "category": "Resin & FDM"
-  },
-  {
     "id": "8",
     "category": "Resin 3D",
     "url": "https://www.elegoo.com",
