@@ -1,15 +1,1 @@
-[
-  {
-    "id": "CMD-FIREBASE-7600",
-    "totalPrice": "45.00",
-    "productPrice": 45,
-    "customerNotes": "Couleur noire mat",
-    "customerAddress": "Tunis, Avenue Habib Bourguiba",
-    "date": "2026-11-15T22:35:29.178Z",
-    "productName": "Porte-stylo Samouraï",
-    "status": "pending",
-    "customerPhone": "21646595833",
-    "quantity": 1,
-    "customerName": "Client Test Firebase"
-  }
-]
+[]
