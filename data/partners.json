@@ -1,90 +1,58 @@
 [
   {
     "id": "1",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 524000000
-    },
     "name": "Bambu Lab",
+    "logo": "assets/partners/bambulab.svg",
     "url": "https://bambulab.com",
-    "category": "3D Printers",
-    "logo": "assets/partners/bambulab.svg"
+    "category": "3D Printers"
   },
   {
     "id": "2",
+    "name": "Creality 3D",
     "logo": "assets/partners/creality.svg",
-    "category": "3D Printers",
     "url": "https://www.creality.com",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 600000000
-    },
-    "name": "Creality 3D"
+    "category": "3D Printers"
   },
   {
     "id": "3",
+    "name": "Prusa Research",
     "logo": "assets/partners/prusa.svg",
     "url": "https://www.prusa3d.com",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 680000000
-    },
-    "name": "Prusa Research",
     "category": "3D Printers"
   },
   {
     "id": "4",
+    "name": "SolidWorks",
     "logo": "assets/partners/solidworks.svg",
     "url": "https://www.solidworks.com",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 769000000
-    },
-    "name": "SolidWorks",
     "category": "CAD Software"
   },
   {
     "id": "5",
-    "url": "https://www.blender.org",
     "name": "Blender 3D",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 832000000
-    },
-    "category": "3D Software",
-    "logo": "assets/partners/blender.svg"
+    "logo": "assets/partners/blender.svg",
+    "url": "https://www.blender.org",
+    "category": "3D Software"
   },
   {
     "id": "6",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 909000000
-    },
+    "name": "eSUN Filament",
     "logo": "assets/partners/esun.svg",
-    "category": "Materials",
     "url": "https://www.esun3d.com",
-    "name": "eSUN Filament"
+    "category": "Materials"
   },
   {
     "id": "7",
-    "updatedAt": {
-      "seconds": 1795032428,
-      "nanoseconds": 998000000
-    },
-    "category": "Resin & FDM",
     "name": "Anycubic",
+    "logo": "assets/partners/anycubic.svg",
     "url": "https://www.anycubic.com",
-    "logo": "assets/partners/anycubic.svg"
+    "category": "Resin & FDM"
   },
   {
     "id": "8",
-    "updatedAt": {
-      "seconds": 1795032429,
-      "nanoseconds": 67000000
-    },
-    "category": "Resin 3D",
+    "name": "Elegoo",
     "logo": "assets/partners/elegoo.svg",
     "url": "https://www.elegoo.com",
-    "name": "Elegoo"
+    "category": "Resin 3D"
   }
 ]
