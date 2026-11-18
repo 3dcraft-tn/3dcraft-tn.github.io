@@ -241,16 +241,17 @@
               <h1 style="font-size:1.8rem; font-weight:900; margin:0;">Partenaires & <span>Marques Défilantes</span></h1>
               <span id="partnersSyncBadge" style="padding:5px 12px; border-radius:50px; font-size:.8rem; font-weight:700; background:var(--primary-soft); color:var(--primary);">🟢 En direct (Synchro Cloud Active)</span>
             </div>
-            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Les logos ajoutés ici défilent automatiquement en bas de votre boutique pour vos clients</p>
+            <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Les logos ajoutés ici défilent automatiquement en haut de votre boutique (sous la bannière d'accueil) pour vos clients</p>
           </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="openNewPartnerForm()" style="font-weight:800; background:var(--primary); box-shadow:0 4px 12px var(--primary-glow); font-size:0.95rem; padding:8px 18px;">➕ Ajouter un Partenaire</button>
             <button class="btn btn-primary btn-sm" onclick="autoSyncPartnersToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800;">🔄 Forcer la Synchro</button>
-            <button class="btn btn-dark btn-sm" onclick="resetDefaultPartners()">✨ Rétablir logos officiels</button>
+            <button class="btn btn-dark btn-sm" onclick="resetDefaultPartners()">✨ Rétablir logos</button>
           </div>
         </div>
 
         <!-- ADD / EDIT PARTNER FORM -->
-        <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; margin-bottom:40px; box-shadow:var(--shadow);">
+        <div id="partnerFormCard" style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; margin-bottom:40px; box-shadow:var(--shadow); transition:box-shadow .3s ease;">
           <h3 id="partnerFormTitle" style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">➕ Ajouter un Nouveau Partenaire / Logo</h3>
           
           <form id="partnerForm" onsubmit="savePartner(event)">
@@ -269,8 +270,12 @@
 
             <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:18px;">
               <div class="form-group">
-                <label for="partLogo">URL ou chemin du Logo *</label>
-                <input type="text" id="partLogo" class="form-input" placeholder="ex: assets/partners/bambulab.svg ou https://..." required oninput="previewPartnerLogo(this.value)">
+                <label for="partLogo">Logo (URL Web ou Fichier Image) *</label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="partLogo" class="form-input" style="flex:1;" placeholder="ex: assets/partners/bambulab.svg ou https://..." required oninput="previewPartnerLogo(this.value)">
+                  <button type="button" class="btn btn-dark btn-sm" onclick="document.getElementById('partLogoFileInput').click()" style="white-space:nowrap; padding:0 14px;" title="Importer une image depuis votre appareil">📁 Choisir fichier</button>
+                </div>
+                <input type="file" id="partLogoFileInput" accept="image/*" style="display:none;" onchange="handlePartnerLogoFile(event)">
               </div>
               <div class="form-group">
                 <label for="partUrl">Lien du site Web (Optionnel)</label>
@@ -295,7 +300,10 @@
 
         <!-- PARTNERS LIST TABLE -->
         <div style="background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:30px; box-shadow:var(--shadow);">
-          <h3 style="font-size:1.3rem; font-weight:800; margin-bottom:20px;">📋 Liste des Partenaires Actifs (<span id="partnersCountLbl">0</span>)</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+            <h3 style="font-size:1.3rem; font-weight:800; margin:0;">📋 Liste des Partenaires Actifs (<span id="partnersCountLbl">0</span>)</h3>
+            <button class="btn btn-primary btn-sm" onclick="openNewPartnerForm()" style="font-weight:800; background:var(--primary); box-shadow:0 4px 12px var(--primary-glow); padding:7px 16px;">➕ Ajouter un Partenaire</button>
+          </div>
           
           <div style="overflow-x:auto;">
             <table class="admin-table">
@@ -994,6 +1002,34 @@
       document.getElementById('submitPartnerBtn').textContent = '💾 Mettre à jour';
       document.getElementById('cancelPartnerBtn').style.display = 'inline-flex';
       window.scrollTo({ top: document.getElementById('partnersSection').offsetTop - 30, behavior: 'smooth' });
+    }
+
+    function openNewPartnerForm(){
+      cancelEditPartner();
+      const formCard = document.getElementById('partnerFormCard');
+      if(formCard){
+        formCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        formCard.style.boxShadow = '0 0 0 3px var(--primary), var(--shadow)';
+        setTimeout(() => { formCard.style.boxShadow = 'var(--shadow)'; }, 2500);
+      }
+      const input = document.getElementById('partName');
+      if(input) input.focus();
+    }
+
+    function handlePartnerLogoFile(e){
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+      if(file.size > 2 * 1024 * 1024) {
+        alert('Le fichier est volumineux (plus de 2 Mo). Privilégiez une image compressée ou un logo SVG/PNG.');
+      }
+      const reader = new FileReader();
+      reader.onload = function(evt){
+        const dataUrl = evt.target.result;
+        document.getElementById('partLogo').value = dataUrl;
+        previewPartnerLogo(dataUrl);
+        toast('Logo image chargé avec succès ! 🖼️');
+      };
+      reader.readAsDataURL(file);
     }
 
     function cancelEditPartner(){
