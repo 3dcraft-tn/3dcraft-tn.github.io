@@ -36,7 +36,6 @@
         <div class="form-group">
           <label for="adminPass">Mot de passe secret</label>
           <input type="password" id="adminPass" class="form-input" placeholder="Entrez le mot de passe..." required autofocus>
-          <small style="display:block; margin-top:8px; color:var(--text-muted); font-size:0.8rem;">💡 Code d'accès : <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700;">admin3dcraft2026</code> (ou <code>admin</code>)</small>
         </div>
         <p id="loginErr" style="color:var(--danger); font-size:.85rem; font-weight:700; display:none; margin-bottom:14px;">❌ Mot de passe incorrect</p>
         <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🔓 Ouvrir l'Atelier</button>
@@ -413,8 +412,8 @@
       } else {
         const err = document.getElementById('loginErr');
         err.style.display = 'block';
-        err.innerHTML = '❌ Mot de passe incorrect. Code d\'accès : <code>admin3dcraft2026</code> ou <code>admin</code>';
-        setTimeout(() => err.style.display = 'none', 6000);
+        err.textContent = '❌ Mot de passe incorrect. Veuillez réessayer.';
+        setTimeout(() => err.style.display = 'none', 4000);
       }
     }
 
