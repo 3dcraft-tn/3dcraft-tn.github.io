@@ -3,88 +3,56 @@
     "id": "1",
     "name": "Bambu Lab",
     "category": "3D Printers",
-    "url": "https://bambulab.com",
     "logo": "assets/partners/bambulab.svg",
-    "updatedAt": {
-      "seconds": 1795032447,
-      "nanoseconds": 830000000
-    }
+    "url": "https://bambulab.com"
   },
   {
     "id": "2",
-    "logo": "https://scontent.ftun16-1.fna.fbcdn.net/v/t39.30808-6/903552407_1453761400281532_8285187849921190643_n.avif?stp=dst-jpg_tt6&cstp=mx598x476&ctp=s598x476&_nc_cat=105&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=tfdoKnb_jUcQ7kNvwGJqe-T&_nc_oc=AdrRHstbI1jW_tVfnfxFKv30zWkdG2KWJVQloPPE67uwG2vLDD6tMlstf1Sxtp8MOKk&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=vNmaMuBx62uojlJonyxAhg&_nc_ss=7b2a8&oh=00_AQQ0bG-i53AmD-RhYvibEIcgxNrZ2vPVUlH4igfsFHTblA&oe=6B03EC94",
+    "name": "technomaker",
     "category": "Robotic Club",
-    "url": "https://www.facebook.com/Technomaker.tn/",
-    "updatedAt": {
-      "seconds": 1795032492,
-      "nanoseconds": 621000000
-    },
-    "name": "technomaker"
+    "logo": "https://scontent.ftun16-1.fna.fbcdn.net/v/t39.30808-6/903552407_1453761400281532_8285187849921190643_n.avif?stp=dst-jpg_tt6&cstp=mx598x476&ctp=s598x476&_nc_cat=105&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=tfdoKnb_jUcQ7kNvwGJqe-T&_nc_oc=AdrRHstbI1jW_tVfnfxFKv30zWkdG2KWJVQloPPE67uwG2vLDD6tMlstf1Sxtp8MOKk&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=vNmaMuBx62uojlJonyxAhg&_nc_ss=7b2a8&oh=00_AQQ0bG-i53AmD-RhYvibEIcgxNrZ2vPVUlH4igfsFHTblA&oe=6B03EC94",
+    "url": "https://www.facebook.com/Technomaker.tn/"
   },
   {
     "id": "3",
-    "updatedAt": {
-      "seconds": 1795032447,
-      "nanoseconds": 948000000
-    },
     "name": "Little-son",
-    "url": "https://little-son.tn/",
+    "category": "Materials",
     "logo": "https://little-son.tn/img/logo-1682280363.jpg",
-    "category": "Materials"
+    "url": "https://little-son.tn/"
   },
   {
     "id": "4",
-    "logo": "assets/partners/solidworks.svg",
-    "url": "https://www.solidworks.com",
-    "category": "CAD Software",
     "name": "SolidWorks",
-    "updatedAt": {
-      "seconds": 1795032448,
-      "nanoseconds": 5000000
-    }
+    "category": "CAD Software",
+    "logo": "assets/partners/solidworks.svg",
+    "url": "https://www.solidworks.com"
   },
   {
     "id": "5",
-    "url": "https://www.blender.org",
     "name": "Blender 3D",
+    "category": "3D Software",
     "logo": "assets/partners/blender.svg",
-    "updatedAt": {
-      "seconds": 1795032448,
-      "nanoseconds": 60000000
-    },
-    "category": "3D Software"
+    "url": "https://www.blender.org"
   },
   {
     "id": "6",
+    "name": "eSUN Filament",
     "category": "Materials",
     "logo": "assets/partners/esun.svg",
-    "url": "https://www.esun3d.com",
-    "name": "eSUN Filament",
-    "updatedAt": {
-      "seconds": 1795032448,
-      "nanoseconds": 121000000
-    }
+    "url": "https://www.esun3d.com"
   },
   {
     "id": "7",
+    "name": "Anycubic",
     "category": "Resin & FDM",
     "logo": "assets/partners/anycubic.svg",
-    "name": "Anycubic",
-    "url": "https://www.anycubic.com",
-    "updatedAt": {
-      "seconds": 1795032448,
-      "nanoseconds": 170000000
-    }
+    "url": "https://www.anycubic.com"
   },
   {
     "id": "8",
-    "updatedAt": {
-      "seconds": 1795032448,
-      "nanoseconds": 234000000
-    },
     "name": "Elegoo",
-    "url": "https://www.elegoo.com",
+    "category": "Resin 3D",
     "logo": "assets/partners/elegoo.svg",
-    "category": "Resin 3D"
+    "url": "https://www.elegoo.com"
   }
 ]
