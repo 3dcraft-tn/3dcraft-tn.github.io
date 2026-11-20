@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "productId": "1794277554330",
+    "productName": "Étui pour batterie et carte mémoire d'appareil photo CANON",
+    "productPrice": 45,
+    "productCategory": "accessories",
+    "productImage": "https://makerworld.bblmw.com/makerworld/model/USe8b4c411bb6f77/design/2024-11-15_9a33f4c1a06bf.jpg?x-oss-process=image/resize,w_1000/format,webp",
+    "quantity": 1,
+    "totalPrice": "45.00",
+    "customerName": "Imed",
+    "customerPhone": "97267947",
+    "customerAddress": "Manar",
+    "customerNotes": "",
+    "status": "pending",
+    "id": "CMD-7179",
+    "date": "2026-11-20T11:10:18.418Z"
+  }
+]
