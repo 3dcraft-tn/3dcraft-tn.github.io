@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "productId": "1794313589428",
+    "productName": "SONY Camera Battery & Memory Card Case",
+    "productPrice": 45,
+    "productCategory": "accessories",
+    "productImage": "https://makerworld.bblmw.com/makerworld/model/USb2a30e8a98ee0d/design/2024-06-02_4312060447834.jpg?x-oss-process=image/resize,w_1000/format,webp",
+    "quantity": 1,
+    "totalPrice": "45.00",
+    "customerName": "Achref",
+    "customerPhone": "93149277",
+    "customerAddress": "Kairouan",
+    "customerNotes": "",
+    "status": "pending",
+    "id": "CMD-2101",
+    "date": "2026-11-23T16:53:51.538Z"
+  }
+]
