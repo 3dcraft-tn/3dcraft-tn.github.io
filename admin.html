@@ -33,12 +33,16 @@
       <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:24px;">Page secrète réservée au propriétaire</p>
       
       <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="adminPass">Mot de passe secret</label>
-          <input type="password" id="adminPass" class="form-input" placeholder="Entrez le mot de passe..." required autofocus>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label for="adminEmail">Email Administrateur</label>
+          <input type="email" id="adminEmail" class="form-input" placeholder="admin@3dcraft.tn" required autofocus>
         </div>
-        <p id="loginErr" style="color:var(--danger); font-size:.85rem; font-weight:700; display:none; margin-bottom:14px;">❌ Mot de passe incorrect</p>
-        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🔓 Ouvrir l'Atelier</button>
+        <div class="form-group">
+          <label for="adminPass">Mot de passe</label>
+          <input type="password" id="adminPass" class="form-input" placeholder="••••••••" required>
+        </div>
+        <p id="loginErr" style="color:var(--danger); font-size:.85rem; font-weight:700; display:none; margin-bottom:14px;">❌ Identifiants incorrects</p>
+        <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="width:100%; justify-content:center;">🔓 Se Connecter (Firebase Auth)</button>
       </form>
     </div>
   </div>
@@ -74,7 +78,7 @@
             <p style="color:var(--text-muted); font-size:.92rem; margin:0;">Toute modification est automatiquement enregistrée et visible pour tous vos clients</p>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" id="publishBtn" onclick="autoSyncToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(46,125,50,.3);">🔄 Forcer la Synchronisation</button>
+            <button class="btn btn-primary btn-sm" id="publishBtn" onclick="refreshCloudData(true)" style="background:#2e7d32; color:#fff; font-weight:800; box-shadow:0 4px 12px rgba(46,125,50,.3);">🔄 Recharger Données Cloud</button>
             <button class="btn btn-dark btn-sm" onclick="exportJSON()">📥 Exporter</button>
             <button class="btn btn-dark btn-sm" onclick="importJSON()">📤 Importer</button>
           </div>
@@ -244,7 +248,7 @@
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             <button class="btn btn-primary btn-sm" onclick="openNewPartnerForm()" style="font-weight:800; background:var(--primary); box-shadow:0 4px 12px var(--primary-glow); font-size:0.95rem; padding:8px 18px;">➕ Ajouter un Partenaire</button>
-            <button class="btn btn-primary btn-sm" onclick="autoSyncPartnersToGitHub(true)" style="background:#2e7d32; color:#fff; font-weight:800;">🔄 Forcer la Synchro</button>
+            <button class="btn btn-primary btn-sm" onclick="refreshPartnersData(true)" style="background:#2e7d32; color:#fff; font-weight:800;">🔄 Recharger Logos Cloud</button>
             <button class="btn btn-dark btn-sm" onclick="resetDefaultPartners()">✨ Rétablir logos</button>
           </div>
         </div>
@@ -393,27 +397,51 @@
   <!-- Firebase Cloud SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="js/firebase.js"></script>
   <script src="app.js"></script>
   <script>
-    const PASS = 'admin3dcraft2026';
-    const VALID_PASSWORDS = ['admin3dcraft2026', 'admin', '3dcraft', 'admin2026', '3dcraft2026', '1234'];
     let currentAdminTab = 'products';
     let currentOrderFilter = 'all';
     let currentOrderSearch = '';
 
-    function handleLogin(e){
+    async function handleLogin(e){
       e.preventDefault();
-      const val = (document.getElementById('adminPass').value || '').trim();
-      if(VALID_PASSWORDS.includes(val.toLowerCase()) || val === PASS){
-        sessionStorage.setItem('3dcraft_admin_auth', '1');
-        unlock();
-        toast('Bienvenue dans votre atelier Admin ! 🎉');
-      } else {
-        const err = document.getElementById('loginErr');
+      const email = (document.getElementById('adminEmail')?.value || '').trim();
+      const pass = (document.getElementById('adminPass')?.value || '').trim();
+      const err = document.getElementById('loginErr');
+      const submitBtn = document.getElementById('loginSubmitBtn');
+      err.style.display = 'none';
+
+      if(!email || !pass) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Connexion en cours...';
+
+      try {
+        // 1. Connexion officielle via Firebase Authentication
+        if(typeof CloudStore !== 'undefined' && CloudStore.getAuth()){
+          await CloudStore.login(email, pass);
+          sessionStorage.setItem('3dcraft_admin_auth', '1');
+          unlock();
+          toast('Bienvenue dans votre atelier Admin ! 🛡️');
+          return;
+        }
+        throw new Error('Module Firebase Auth non disponible');
+      } catch(error){
+        console.warn('Tentative de connexion:', error.code || error.message);
+        
+        if(error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential'){
+          err.textContent = '❌ Email ou mot de passe incorrect. Vérifiez vos identifiants Firebase Auth.';
+        } else if(error.code === 'auth/operation-not-allowed'){
+          err.innerHTML = '⚠️ Authentification par Email non activée dans Firebase Console.<br><small>Activez "Email/Password" dans Firebase Console > Authentication.</small>';
+        } else {
+          err.textContent = '❌ Échec de connexion : ' + (error.message || 'Identifiants invalides');
+        }
         err.style.display = 'block';
-        err.textContent = '❌ Mot de passe incorrect. Veuillez réessayer.';
-        setTimeout(() => err.style.display = 'none', 4000);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🔓 Se Connecter (Firebase Auth)';
       }
     }
 
@@ -496,8 +524,11 @@
       toast('Commandes actualisées depuis le Cloud ! 🔄');
     }
 
-    function logout(){
+    async function logout(){
       sessionStorage.removeItem('3dcraft_admin_auth');
+      if(typeof CloudStore !== 'undefined'){
+        try { await CloudStore.logout(); } catch(e){}
+      }
       location.reload();
     }
 
@@ -548,19 +579,26 @@
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Aucun article. Ajoutez votre premier produit ci-dessus !</td></tr>';
         return;
       }
-      tbody.innerHTML = prods.map(p => `
-        <tr>
-          <td style="font-size:1.4rem; text-align:center;">${getEmoji(p.category)}</td>
-          <td><strong style="color:var(--text);">${p.name}</strong><br><small style="color:var(--text-muted);">${(p.description||'').substring(0,50)}</small></td>
-          <td>${CATS[p.category]?.name || p.category}</td>
-          <td><strong style="color:var(--primary); font-size:1.05rem;">${parseFloat(p.price).toFixed(2)} TND</strong></td>
-          <td>${p.badge ? `<span class="badge badge-${p.badge}">${p.badge}</span>` : '—'}</td>
-          <td>
-            <button class="btn btn-dark btn-sm" style="padding:4px 8px;" onclick="editProduct('${p.id}')" title="Modifier">✏️</button>
-            <button class="btn btn-dark btn-sm" style="padding:4px 8px; color:var(--danger);" onclick="deleteProduct('${p.id}')" title="Supprimer">🗑️</button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = prods.map(p => {
+        const safeId = escapeHTML(p.id);
+        const safeName = escapeHTML(p.name);
+        const safeDesc = escapeHTML((p.description || '').substring(0, 50));
+        const safeCat = escapeHTML(CATS[p.category]?.name || p.category);
+        const safeBadge = p.badge ? `<span class="badge badge-${escapeHTML(p.badge)}">${escapeHTML(p.badge)}</span>` : '—';
+        return `
+          <tr>
+            <td style="font-size:1.4rem; text-align:center;">${getEmoji(p.category)}</td>
+            <td><strong style="color:var(--text);">${safeName}</strong><br><small style="color:var(--text-muted);">${safeDesc}</small></td>
+            <td>${safeCat}</td>
+            <td><strong style="color:var(--primary); font-size:1.05rem;">${parseFloat(p.price || 0).toFixed(2)} TND</strong></td>
+            <td>${safeBadge}</td>
+            <td>
+              <button class="btn btn-dark btn-sm" style="padding:4px 8px;" onclick="editProduct('${safeId}')" title="Modifier">✏️</button>
+              <button class="btn btn-dark btn-sm" style="padding:4px 8px; color:var(--danger);" onclick="deleteProduct('${safeId}')" title="Supprimer">🗑️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function saveProduct(e){
@@ -578,14 +616,13 @@
 
       if(id){
         Store.update(id, data);
-        toast('Produit mis à jour ! 💾');
+        toast('Produit mis à jour dans le Cloud ! 💾');
       } else {
         Store.add(data);
-        toast('Nouveau produit ajouté ! 🎉');
+        toast('Nouveau produit ajouté et synchronisé ! 🎉');
       }
       cancelEdit();
       renderDashboard();
-      autoSyncToGitHub();
     }
 
     function editProduct(id){
@@ -616,9 +653,8 @@
     function deleteProduct(id){
       if(confirm('Supprimer définitivement cet article ?')){
         Store.delete(id);
-        toast('Article supprimé ! 🗑️');
+        toast('Article supprimé du Cloud ! 🗑️');
         renderDashboard();
-        autoSyncToGitHub();
       }
     }
 
@@ -647,18 +683,58 @@
       inp.onchange = (e) => {
         const file = e.target.files[0];
         if(!file) return;
+        if(file.size > 2 * 1024 * 1024) {
+          alert('Fichier trop volumineux (maximum 2 Mo)');
+          return;
+        }
         const r = new FileReader();
         r.onload = (ev) => {
           try {
             const arr = JSON.parse(ev.target.result);
-            if(Array.isArray(arr)){
-              Store.save(arr);
-              renderDashboard();
-              toast(`${arr.length} articles importés ! 📤`);
-              autoSyncToGitHub();
+            if(!Array.isArray(arr) || arr.length === 0){
+              alert('Le fichier doit contenir une liste d\'articles sous forme de tableau JSON valide.');
+              return;
             }
+            if(arr.length > 500){
+              alert('Le fichier contient trop d\'articles (maximum 500 à la fois).');
+              return;
+            }
+
+            // Validation et assainissement strict de chaque produit
+            const validProds = [];
+            for (let i = 0; i < arr.length; i++) {
+              const item = arr[i];
+              if (!item || typeof item !== 'object') continue;
+              const name = String(item.name || '').trim();
+              const category = String(item.category || '').trim();
+              const price = parseFloat(item.price);
+              if (!name || isNaN(price) || price < 0) continue;
+
+              validProds.push({
+                id: String(item.id || (Date.now() + i)),
+                name: name.substring(0, 200),
+                category: CATS[category] ? category : 'accessories',
+                price: parseFloat(price.toFixed(2)),
+                badge: ['new', 'sale', 'popular'].includes(item.badge) ? item.badge : '',
+                description: String(item.description || '').substring(0, 1000).trim(),
+                image: sanitizeURL(item.image || ''),
+                featured: Boolean(item.featured)
+              });
+            }
+
+            if (validProds.length === 0) {
+              alert('Aucun article valide trouvé dans le fichier JSON.');
+              return;
+            }
+
+            Store.save(validProds);
+            if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
+              validProds.forEach(p => CloudStore.addProduct(p));
+            }
+            renderDashboard();
+            toast(`✅ ${validProds.length} articles validés et importés avec succès ! 📤`);
           } catch(err){
-            alert('Format de fichier invalide');
+            alert('Format de fichier JSON corrompu ou illisible.');
           }
         };
         r.readAsText(file);
@@ -738,11 +814,18 @@
         const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '');
         const waPhone = cleanPhone.startsWith('216') ? cleanPhone : ('216' + cleanPhone);
 
+        const safeId = escapeHTML(o.id);
+        const safeProdName = escapeHTML(o.productName || 'Article');
+        const safeCustName = escapeHTML(o.customerName || 'Non renseigné');
+        const safeCustPhone = escapeHTML(o.customerPhone || '—');
+        const safeCustAddress = escapeHTML(o.customerAddress || 'Non renseignée');
+        const safeCustNotes = o.customerNotes ? escapeHTML(o.customerNotes) : '';
+
         const waContactMsg = encodeURIComponent(
           `Bonjour ${o.customerName || 'Client'} ! 👋\n` +
           `3D Craft à votre service concernant votre commande *${o.id}* :\n` +
-          `- Article : ${o.quantity || 1}x ${o.productName}\n` +
-          `- Montant : ${o.totalPrice} TND\n` +
+          `- Article : ${o.quantity || 1}x ${o.productName || 'Article'}\n` +
+          `- Montant : ${o.totalPrice || 0} TND\n` +
           `- Statut actuel : ${getStatusLabel(o.status)}\n\n` +
           `Pouvez-vous nous confirmer votre disponibilité pour la livraison ?`
         );
@@ -751,12 +834,12 @@
           <div class="order-card">
             <div class="order-head-row">
               <div class="order-ref">
-                <span style="color:var(--primary);">#${o.id}</span>
+                <span style="color:var(--primary);">#${safeId}</span>
                 <span class="order-date">📅 ${dateStr}</span>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
                 <label style="font-size:.82rem; font-weight:700; color:var(--text-muted);">Statut :</label>
-                <select class="order-status-select ${o.status}" onchange="changeOrderStatus('${o.id}', this.value)">
+                <select class="order-status-select ${escapeHTML(o.status)}" onchange="changeOrderStatus('${safeId}', this.value)">
                   <option value="pending" ${o.status==='pending'?'selected':''}>⏳ En attente</option>
                   <option value="processing" ${o.status==='processing'?'selected':''}>🛠️ En préparation 3D</option>
                   <option value="shipping" ${o.status==='shipping'?'selected':''}>🚚 En cours de livraison</option>
@@ -769,23 +852,23 @@
             <div class="order-grid-details">
               <div class="order-prod-box">
                 <div style="font-size:.76rem; font-weight:800; color:var(--primary); text-transform:uppercase; margin-bottom:4px;">📦 Produit Commandé</div>
-                <div style="font-size:1.05rem; font-weight:800; color:var(--text); margin-bottom:4px;">${o.productName}</div>
-                <div style="font-size:.85rem; color:var(--text-muted); margin-bottom:6px;">Quantité : <strong>${o.quantity || 1}</strong> × ${parseFloat(o.productPrice || 0).toFixed(2)} TND</div>
+                <div style="font-size:1.05rem; font-weight:800; color:var(--text); margin-bottom:4px;">${safeProdName}</div>
+                <div style="font-size:.85rem; color:var(--text-muted); margin-bottom:6px;">Quantité : <strong>${escapeHTML(o.quantity || 1)}</strong> × ${parseFloat(o.productPrice || 0).toFixed(2)} TND</div>
                 <div style="font-size:1.15rem; font-weight:900; color:var(--primary);">Total : ${parseFloat(o.totalPrice || 0).toFixed(2)} TND</div>
               </div>
 
               <div class="order-client-box">
                 <div style="font-size:.76rem; font-weight:800; color:var(--primary); text-transform:uppercase; margin-bottom:4px;">👤 Informations Client</div>
-                <div style="font-size:.95rem; font-weight:700; color:var(--text); margin-bottom:3px;">${o.customerName || 'Non renseigné'}</div>
+                <div style="font-size:.95rem; font-weight:700; color:var(--text); margin-bottom:3px;">${safeCustName}</div>
                 <div style="font-size:.88rem; color:var(--text); margin-bottom:3px;">
-                  📞 Téléphone : <a href="tel:${o.customerPhone}" style="color:var(--primary); font-weight:700;">${o.customerPhone || '—'}</a>
+                  📞 Téléphone : <a href="tel:${safeCustPhone}" style="color:var(--primary); font-weight:700;">${safeCustPhone}</a>
                 </div>
                 <div style="font-size:.88rem; color:var(--text-muted); margin-bottom:6px;">
-                  📍 Adresse : <strong>${o.customerAddress || 'Non renseignée'}</strong>
+                  📍 Adresse : <strong>${safeCustAddress}</strong>
                 </div>
-                ${o.customerNotes ? `
+                ${safeCustNotes ? `
                   <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; font-size:.84rem; color:var(--text);">
-                    🎨 <strong>Remarques / Couleur :</strong> ${o.customerNotes}
+                    🎨 <strong>Remarques / Couleur :</strong> ${safeCustNotes}
                   </div>
                 ` : ''}
               </div>
@@ -793,14 +876,14 @@
 
             <div class="order-foot-row">
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <a href="https://wa.me/${waPhone}?text=${waContactMsg}" target="_blank" class="btn btn-sm" style="background:#25D366; color:#fff; font-weight:700;">
+                <a href="https://wa.me/${encodeURIComponent(waPhone)}?text=${waContactMsg}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#25D366; color:#fff; font-weight:700;">
                   💬 Discuter sur WhatsApp
                 </a>
-                <a href="tel:${o.customerPhone}" class="btn btn-dark btn-sm">
+                <a href="tel:${safeCustPhone}" class="btn btn-dark btn-sm">
                   📞 Appeler
                 </a>
               </div>
-              <button class="btn btn-dark btn-sm" onclick="deleteOrder('${o.id}')" style="color:var(--danger);" title="Supprimer la commande">
+              <button class="btn btn-dark btn-sm" onclick="deleteOrder('${safeId}')" style="color:var(--danger);" title="Supprimer la commande">
                 🗑️ Supprimer
               </button>
             </div>
@@ -945,24 +1028,31 @@
         return;
       }
 
-      tbody.innerHTML = partners.map(p => `
-        <tr>
-          <td>
-            <div style="width:110px; height:38px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; padding:4px;">
-              <img src="${p.logo}" alt="${p.name}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='assets/icon.png';">
-            </div>
-          </td>
-          <td><strong style="color:var(--text); font-size:1rem;">${p.name}</strong></td>
-          <td><span style="font-size:0.85rem; background:#f1f5f9; padding:4px 8px; border-radius:4px; font-weight:600; color:#475569;">${p.category || 'Partenaire'}</span></td>
-          <td>${p.url ? `<a href="${p.url}" target="_blank" style="color:var(--primary); font-size:0.88rem; text-decoration:underline;">${p.url.replace(/^https?:\/\//, '')}</a>` : '<span style="color:var(--text-muted); font-size:0.85rem;">—</span>'}</td>
-          <td>
-            <div style="display:flex; gap:6px;">
-              <button class="btn btn-dark btn-sm" style="padding:4px 8px;" onclick="editPartner('${p.id}')" title="Modifier">✏️</button>
-              <button class="btn btn-dark btn-sm" style="padding:4px 8px; color:var(--danger);" onclick="deletePartner('${p.id}')" title="Supprimer">🗑️</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = partners.map(p => {
+        const safeId = escapeHTML(p.id);
+        const safeName = escapeHTML(p.name);
+        const safeCat = escapeHTML(p.category || 'Partenaire');
+        const safeLogo = sanitizeURL(p.logo) || 'assets/icon.png';
+        const safeUrl = sanitizeURL(p.url);
+        return `
+          <tr>
+            <td>
+              <div style="width:110px; height:38px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; padding:4px;">
+                <img src="${safeLogo}" alt="${safeName}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.onerror=null; this.src='assets/icon.png';">
+              </div>
+            </td>
+            <td><strong style="color:var(--text); font-size:1rem;">${safeName}</strong></td>
+            <td><span style="font-size:0.85rem; background:#f1f5f9; padding:4px 8px; border-radius:4px; font-weight:600; color:#475569;">${safeCat}</span></td>
+            <td>${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener" style="color:var(--primary); font-size:0.88rem; text-decoration:underline;">${safeUrl.replace(/^https?:\/\//, '')}</a>` : '<span style="color:var(--text-muted); font-size:0.85rem;">—</span>'}</td>
+            <td>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-dark btn-sm" style="padding:4px 8px;" onclick="editPartner('${safeId}')" title="Modifier">✏️</button>
+                <button class="btn btn-dark btn-sm" style="padding:4px 8px; color:var(--danger);" onclick="deletePartner('${safeId}')" title="Supprimer">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function savePartner(e){
@@ -1050,154 +1140,71 @@
     }
 
     function resetDefaultPartners(){
-      if(confirm('Rétablir la liste des 8 partenaires et marques officiels 3D (Bambu Lab, Creality, Prusa, SolidWorks, Blender, eSUN, Anycubic, Elegoo) ?')){
+      if(confirm('Rétablir la liste des marques et partenaires officiels 3D ?')){
         PartnerStore.save(DEFAULT_PARTNERS);
         if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
           DEFAULT_PARTNERS.forEach(p => CloudStore.addPartner(p));
         }
-        PartnerStore.syncAllToCloud(DEFAULT_PARTNERS);
         renderPartnersDashboard();
         toast('Logos officiels rétablis avec succès ! ✨');
       }
     }
 
-    async function autoSyncPartnersToGitHub(manual = false){
-      const token = getAuthToken();
-      const badge = document.getElementById('partnersSyncBadge');
-      if(badge){
-        badge.innerHTML = '⏳ Synchronisation...';
-        badge.style.background = '#fff3e0';
-        badge.style.color = '#e65100';
-      }
-
-      try {
-        const partners = PartnerStore.getAll();
-        const jsonStr = JSON.stringify(partners, null, 2);
-        const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
-
-        let sha = null;
-        try {
-          const getRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/partners.json', {
-            headers: {
-              'Authorization': 'token ' + token,
-              'Accept': 'application/vnd.github.v3+json'
-            }
-          });
-          if(getRes.ok){
-            const getData = await getRes.json();
-            sha = getData.sha;
-          }
-        } catch(err){}
-
-        const putRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/partners.json', {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'token ' + token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: 'Mise à jour automatique partenaires 3D Craft',
-            content: contentBase64,
-            sha: sha || undefined
-          })
-        });
-
-        if(putRes.ok){
-          const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-          if(badge){
-            badge.innerHTML = '🟢 En direct sur le Web (' + time + ')';
-            badge.style.background = 'var(--primary-soft)';
-            badge.style.color = 'var(--primary)';
-          }
-          toast('✅ Partenaires en direct sur le Web ! 🌐');
-          if(manual){
-            alert('🎉 Vos partenaires et marques sont synchronisés en direct sur le Web !');
-          }
-        }
-      } catch(e){
-        console.error('Partners sync error', e);
-      }
-    }
-
-    // ==========================================
-    // GITHUB SYNCHRONIZATION
-    // ==========================================
-    function getAuthToken() {
-      return typeof getCloudToken === 'function' ? getCloudToken() : (localStorage.getItem('3dcraft_gh_token') || '');
-    }
-
-    async function autoSyncToGitHub(manual = false){
-      const token = getAuthToken();
+    async function refreshCloudData(manual = false){
       const badge = document.getElementById('syncStatusBadge');
       if(badge){
-        badge.innerHTML = '⏳ Synchronisation en direct...';
-        badge.style.background = '#fff3e0';
-        badge.style.color = '#e65100';
+        badge.innerHTML = '⏳ Chargement Cloud...';
+        badge.style.background = '#e0f2fe';
+        badge.style.color = '#0284c7';
       }
-
       try {
-        const products = Store.getAll();
-        const jsonStr = JSON.stringify(products, null, 2);
-        const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
-
-        let sha = null;
-        try {
-          const getRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
-            headers: {
-              'Authorization': 'token ' + token,
-              'Accept': 'application/vnd.github.v3+json'
-            }
-          });
-          if(getRes.ok){
-            const getData = await getRes.json();
-            sha = getData.sha;
-          }
-        } catch(err){
-          console.warn('SHA fetch:', err);
-        }
-
-        const putRes = await fetch('https://api.github.com/repos/3dcraft-tn/3dcraft-tn.github.io/contents/data/products.json', {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'token ' + token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: 'Mise à jour automatique catalogue 3D Craft',
-            content: contentBase64,
-            sha: sha || undefined
-          })
-        });
-
-        if(putRes.ok){
-          const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-          if(badge){
-            badge.innerHTML = '🟢 En direct sur le Web (' + time + ')';
-            badge.style.background = 'var(--primary-soft)';
-            badge.style.color = 'var(--primary)';
-          }
-          toast('✅ En direct sur le Web ! 🌐');
-          if(manual){
-            alert('🎉 Vos produits et prix sont synchronisés en direct sur le Web !');
-          }
-        } else {
-          if(badge){
-            badge.innerHTML = '⚠️ Erreur synchro (' + putRes.status + ')';
-            badge.style.background = '#ffebee';
-            badge.style.color = '#c62828';
-          }
-        }
-      } catch(e){
-        console.error('Network sync error', e);
+        await Promise.all([Store.loadRemote(), OrderStore.loadRemote()]);
+        renderDashboard();
+        renderOrdersDashboard();
         if(badge){
-          badge.innerHTML = '⚠️ Erreur réseau';
-          badge.style.background = '#ffebee';
-          badge.style.color = '#c62828';
+          const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+          badge.innerHTML = '🟢 Données Cloud à jour (' + time + ')';
+          badge.style.background = 'var(--primary-soft)';
+          badge.style.color = 'var(--primary)';
         }
+        if(manual) toast('✅ Données Cloud actualisées ! 🌐');
+      } catch(e) {
+        console.warn('Refresh cloud error:', e);
+      }
+    }
+
+    async function refreshPartnersData(manual = false){
+      const badge = document.getElementById('partnersSyncBadge');
+      if(badge){
+        badge.innerHTML = '⏳ Chargement Cloud...';
+        badge.style.background = '#e0f2fe';
+        badge.style.color = '#0284c7';
+      }
+      try {
+        await PartnerStore.loadRemote();
+        renderPartnersDashboard();
+        if(badge){
+          const time = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+          badge.innerHTML = '🟢 Logos Cloud à jour (' + time + ')';
+          badge.style.background = 'var(--primary-soft)';
+          badge.style.color = 'var(--primary)';
+        }
+        if(manual) toast('✅ Logos partenaires actualisés ! 🤝');
+      } catch(e) {
+        console.warn('Refresh partners error:', e);
       }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Détection automatique de session Firebase Auth
+      if(typeof CloudStore !== 'undefined' && CloudStore.getAuth()){
+        CloudStore.onAuthStateChanged(user => {
+          if(user){
+            sessionStorage.setItem('3dcraft_admin_auth', '1');
+            unlock();
+          }
+        });
+      }
       if(sessionStorage.getItem('3dcraft_admin_auth') === '1'){
         unlock();
       }
