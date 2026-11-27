@@ -225,7 +225,6 @@ const OrderStore = {
     return list;
   }
 };
-};
 
 // ==========================================
 // CATEGORIES & EMOJIS
