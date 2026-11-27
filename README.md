@@ -25,11 +25,11 @@ Chaque catégorie possède sa propre vue et sa propre page avec filtres dynamiqu
 7. 🎁 **Idées Cadeaux** (`pages/gifts.html` & `#gifts`) : Lithophanies personnalisées, boîtes cryptex et surprises 3D.
 8. 🔑 **Porte-clés Custom** (`pages/keychains.html` & `#keychains`) : Prénoms bicolores, emblèmes de voitures et codes Spotify.
 
-### 🔐 3. Espace Admin Secret (Gestion Produits & Prix)
+### 🔐 3. Espace Admin (Gestion Produits, Commandes & Partenaires)
 - **Totalement invisible du public** : Aucun lien dans la navigation du site pour garantir une discrétion absolue.
-- **Accès protégé par mot de passe** :
-  - **URL :** `/admin.html` (ou `/pages/admin.html`)
-  - **Mot de passe :** `admin3dcraft2026`
+- **Accès sécurisé** :
+  - **URL :** `/admin.html`
+  - **Authentification :** Protégé par Firebase Authentication et règles de sécurité Cloud Firestore (accès restreint au propriétaire).
 - **Gestion Complète (CRUD en direct)** :
   - Ajouter un nouveau produit avec nom, catégorie, prix en TND, badge et description.
   - Modifier le prix ou les détails d'un article existant à tout moment.
@@ -90,10 +90,9 @@ Double-cliquez simplement sur `index.html` pour ouvrir la boutique dans votre na
 
 ---
 
-## 🔑 Identifiants d'Administration
+## 🔑 Accès et Contacts
 
-- **Page Admin :** `admin.html`
-- **Mot de passe :** `admin3dcraft2026`
+- **Page Admin :** `admin.html` (accès protégé par compte administrateur Firebase)
 - **Numéro WhatsApp de commande :** `+216 46 595 833`
 - **Instagram :** [@3dcraft_services](https://www.instagram.com/3dcraft_services/)
 
