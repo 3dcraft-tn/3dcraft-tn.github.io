@@ -3,21 +3,32 @@
  * Store (Products) & OrderStore (Cloud-Synced Customer Orders)
  */
 
-const SEC_PAYLOAD = '060c1d362162263a2b591f40785c6a5e2e570b231b7009222706053a76535c54001e595e05600d0f';
-const APP_PASS = 'admin3dcraft2026';
-const GITHUB_REPO = '3dcraft-tn/3dcraft-tn.github.io';
 const STORE_PHONE = '21646595833'; // +216 46 595 833
 
-function xorDec(hex, key) {
-  let bytes = [];
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes.push(parseInt(hex.substr(i, 2), 16));
-  }
-  return bytes.map((b, i) => String.fromCharCode(b ^ key.charCodeAt(i % key.length))).join('');
+// ==========================================
+// SECURITY UTILITIES (XSS Prevention & Sanitization)
+// ==========================================
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-function getCloudToken() {
-  return localStorage.getItem('3dcraft_gh_token') || xorDec(SEC_PAYLOAD, APP_PASS);
+function sanitizeURL(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  // Allow relative paths, http(s), and safe image data URLs
+  if (trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.startsWith('assets/')) {
+    return escapeHTML(trimmed);
+  }
+  if (/^https?:\/\//i.test(trimmed) || /^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,/i.test(trimmed)) {
+    return escapeHTML(trimmed);
+  }
+  return '';
 }
 
 // ==========================================
@@ -54,30 +65,6 @@ const Store = {
       }
     } catch(e) {
       console.warn('Relative products fetch fallback', e);
-    }
-
-    // 2. Essai via GitHub API directe
-    try {
-      const token = getCloudToken();
-      const apiRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/products.json`, {
-        headers: {
-          'Authorization': 'token ' + token,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-      if (apiRes.ok) {
-        const data = await apiRes.json();
-        if (data && data.content) {
-          const decoded = decodeURIComponent(escape(atob(data.content.replace(/\s/g, ''))));
-          const list = JSON.parse(decoded);
-          if (Array.isArray(list)) {
-            this.save(list);
-            return list;
-          }
-        }
-      }
-    } catch(e) {
-      console.warn('API fetch fallback', e);
     }
 
     return this.getAll();
@@ -157,7 +144,7 @@ const OrderStore = {
     localStorage.setItem(this.KEY, JSON.stringify(orders || []));
   },
 
-  // Charger les commandes depuis Firebase Firestore ou GitHub Cloud
+  // Charger les commandes depuis Firebase Firestore avec secours local
   async loadRemote() {
     // 0. Essai ultra-rapide Firebase Firestore si connecté
     if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
@@ -172,175 +159,42 @@ const OrderStore = {
       }
     }
 
-    const token = getCloudToken();
-    let remoteOrders = null;
-
-    // 1. Essai API GitHub (temps réel avec token)
+    // 1. Secours fichier relatif
     try {
-      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
-        headers: {
-          'Authorization': 'token ' + token,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
+      const isSub = window.location.pathname.includes('/pages/');
+      const relUrl = (isSub ? '../data/orders.json' : 'data/orders.json') + '?t=' + Date.now();
+      const res = await fetch(relUrl);
       if (res.ok) {
-        const json = await res.json();
-        if (json.content) {
-          const decoded = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
-          remoteOrders = JSON.parse(decoded);
+        const remoteOrders = await res.json();
+        if (Array.isArray(remoteOrders)) {
+          const local = this.getAll();
+          const map = new Map();
+          remoteOrders.forEach(o => { if (o && o.id) map.set(o.id, o); });
+          local.forEach(o => { if (o && o.id && !map.has(o.id)) map.set(o.id, o); });
+          const merged = Array.from(map.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+          this.save(merged);
+          return merged;
         }
       }
     } catch(e) {
-      console.warn('API orders fetch fallback', e);
-    }
-
-    // 2. Secours relatif
-    if (!remoteOrders) {
-      try {
-        const isSub = window.location.pathname.includes('/pages/');
-        const relUrl = (isSub ? '../data/orders.json' : 'data/orders.json') + '?t=' + Date.now();
-        const res = await fetch(relUrl);
-        if (res.ok) {
-          remoteOrders = await res.json();
-        }
-      } catch(e) {
-        console.warn('Relative orders fetch fallback', e);
-      }
-    }
-
-    if (Array.isArray(remoteOrders)) {
-      // Fusionner avec les commandes locales sans doublons
-      const local = this.getAll();
-      const map = new Map();
-      remoteOrders.forEach(o => { if (o && o.id) map.set(o.id, o); });
-      local.forEach(o => { if (o && o.id && !map.has(o.id)) map.set(o.id, o); });
-      const merged = Array.from(map.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-      this.save(merged);
-      return merged;
+      console.warn('Relative orders fetch fallback', e);
     }
 
     return this.getAll();
   },
 
-  // Envoyer une nouvelle commande directement dans GitHub data/orders.json
-  async sendToCloud(order, retries = 3) {
-    const token = getCloudToken();
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        // 1. Obtenir le SHA actuel et la liste en direct
-        let currentOrders = [];
-        let sha = null;
-
-        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
-          headers: {
-            'Authorization': 'token ' + token,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-
-        if (getRes.ok) {
-          const json = await getRes.json();
-          sha = json.sha;
-          if (json.content) {
-            try {
-              const decoded = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
-              currentOrders = JSON.parse(decoded) || [];
-            } catch(e){}
-          }
-        }
-
-        // Ajouter l'ordre sans doublon
-        if (!currentOrders.some(o => o.id === order.id)) {
-          currentOrders.unshift(order);
-        }
-
-        // 2. PUT sur GitHub
-        const contentB64 = btoa(unescape(encodeURIComponent(JSON.stringify(currentOrders, null, 2))));
-        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'token ' + token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: `Nouvelle commande client #${order.id} [${order.customerName}]`,
-            content: contentB64,
-            sha: sha || undefined
-          })
-        });
-
-        if (putRes.ok) {
-          console.log(`✅ Commande #${order.id} enregistrée dans le Cloud GitHub !`);
-          return true;
-        } else {
-          console.warn(`Tentative ${attempt + 1}: status ${putRes.status}`);
-        }
-      } catch(err) {
-        console.warn(`Erreur envoi commande cloud (tentative ${attempt + 1}):`, err);
-      }
-      // Attente exponentielle avant nouvel essai
-      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-    }
-    return false;
-  },
-
-  // Synchroniser la liste complète dans le Cloud (utilisé par Admin lors de changement de statut ou suppression)
-  async syncAllToCloud(orders, retries = 3) {
-    const token = getCloudToken();
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        let sha = null;
-        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
-          headers: {
-            'Authorization': 'token ' + token,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-        if (getRes.ok) {
-          const json = await getRes.json();
-          sha = json.sha;
-        }
-
-        const contentB64 = btoa(unescape(encodeURIComponent(JSON.stringify(orders, null, 2))));
-        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/orders.json`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'token ' + token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: `Mise à jour statut commandes 3D Craft (${orders.length})`,
-            content: contentB64,
-            sha: sha || undefined
-          })
-        });
-
-        if (putRes.ok) {
-          return true;
-        }
-      } catch(e) {
-        console.warn(`syncAllToCloud attempt ${attempt + 1}:`, e);
-      }
-      await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
-    }
-    return false;
-  },
-
   add(order) {
     const list = this.getAll();
-    order.id = 'CMD-' + Math.floor(1000 + Math.random() * 9000);
-    order.date = new Date().toISOString();
+    order.id = order.id || ('CMD-' + Math.floor(1000 + Math.random() * 9000));
+    order.date = order.date || new Date().toISOString();
     order.status = order.status || 'pending';
     list.unshift(order);
     this.save(list);
 
-    // 1. Envoi instantané vers Firebase Firestore
+    // Envoi instantané vers Firebase Firestore
     if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
       CloudStore.addOrder(order).catch(err => console.warn('Firestore addOrder error:', err));
     }
-
-    // 2. Envoi vers GitHub Cloud (Double sécurité)
-    this.sendToCloud(order).catch(err => console.warn('Cloud sync error:', err));
     return order;
   },
 
@@ -355,8 +209,6 @@ const OrderStore = {
       if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
         CloudStore.updateOrderStatus(id, newStatus).catch(err => console.warn('Firestore updateOrderStatus error:', err));
       }
-
-      this.syncAllToCloud(list).catch(err => console.warn('Cloud updateStatus error:', err));
       return list[idx];
     }
     return null;
@@ -370,10 +222,9 @@ const OrderStore = {
     if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
       CloudStore.deleteOrder(id).catch(err => console.warn('Firestore deleteOrder error:', err));
     }
-
-    this.syncAllToCloud(list).catch(err => console.warn('Cloud delete error:', err));
     return list;
   }
+};
 };
 
 // ==========================================
@@ -455,8 +306,8 @@ function renderProductsGrid(containerId, products) {
 // ==========================================
 const DEFAULT_PARTNERS = [
   { id: '1', name: 'Bambu Lab', logo: 'assets/partners/bambulab.svg', url: 'https://bambulab.com', category: '3D Printers' },
-  { id: '2', name: 'Creality 3D', logo: 'assets/partners/creality.svg', url: 'https://www.creality.com', category: '3D Printers' },
-  { id: '3', name: 'Prusa Research', logo: 'assets/partners/prusa.svg', url: 'https://www.prusa3d.com', category: '3D Printers' },
+  { id: '2', name: 'technomaker', logo: 'https://scontent.ftun16-1.fna.fbcdn.net/v/t39.30808-6/903552407_1453761400281532_8285187849921190643_n.avif?stp=dst-jpg_tt6&cstp=mx598x476&ctp=s598x476&_nc_cat=105&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=tfdoKnb_jUcQ7kNvwGJqe-T&_nc_oc=AdrRHstbI1jW_tVfnfxFKv30zWkdG2KWJVQloPPE67uwG2vLDD6tMlstf1Sxtp8MOKk&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=vNmaMuBx62uojlJonyxAhg&_nc_ss=7b2a8&oh=00_AQQ0bG-i53AmD-RhYvibEIcgxNrZ2vPVUlH4igfsFHTblA&oe=6B03EC94', url: 'https://www.facebook.com/Technomaker.tn/', category: 'Robotic Club' },
+  { id: '3', name: 'Little-son', logo: 'https://little-son.tn/img/logo-1682280363.jpg', url: 'https://little-son.tn/', category: 'Materials' },
   { id: '4', name: 'SolidWorks', logo: 'assets/partners/solidworks.svg', url: 'https://www.solidworks.com', category: 'CAD Software' },
   { id: '5', name: 'Blender 3D', logo: 'assets/partners/blender.svg', url: 'https://www.blender.org', category: '3D Software' },
   { id: '6', name: 'eSUN Filament', logo: 'assets/partners/esun.svg', url: 'https://www.esun3d.com', category: 'Materials' },
@@ -522,7 +373,6 @@ const PartnerStore = {
     if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
       CloudStore.addPartner(partner).catch(e => console.warn('CloudStore addPartner err', e));
     }
-    this.syncAllToCloud(list).catch(e => console.warn('Cloud sync partners err', e));
     return partner;
   },
 
@@ -535,7 +385,6 @@ const PartnerStore = {
       if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
         CloudStore.updatePartner(id, list[idx]).catch(e => console.warn('CloudStore updatePartner err', e));
       }
-      this.syncAllToCloud(list).catch(e => console.warn('Cloud sync partners err', e));
       return list[idx];
     }
     return null;
@@ -547,39 +396,7 @@ const PartnerStore = {
     if (typeof CloudStore !== 'undefined' && CloudStore.isReady()) {
       CloudStore.deletePartner(id).catch(e => console.warn('CloudStore deletePartner err', e));
     }
-    this.syncAllToCloud(list).catch(e => console.warn('Cloud sync partners err', e));
     return list;
-  },
-
-  async syncAllToCloud(partners) {
-    const token = getCloudToken();
-    if (!token) return;
-    try {
-      const jsonStr = JSON.stringify(partners, null, 2);
-      const contentBase64 = btoa(unescape(encodeURIComponent(jsonStr)));
-      let sha = null;
-      try {
-        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/partners.json`, {
-          headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
-        });
-        if (getRes.ok) {
-          const json = await getRes.json();
-          sha = json.sha;
-        }
-      } catch(e) {}
-
-      await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data/partners.json`, {
-        method: 'PUT',
-        headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: 'Update partners list',
-          content: contentBase64,
-          sha: sha || undefined
-        })
-      });
-    } catch(e) {
-      console.warn('syncAllToCloud partners error', e);
-    }
   }
 };
 
@@ -597,14 +414,19 @@ function renderPartnersMarquee(containerId) {
   // Double the list for seamless continuous infinite marquee
   const loopList = [...partners, ...partners];
 
-  const cardsHtml = loopList.map(p => `
-    <a href="${p.url || '#'}" target="${p.url ? '_blank' : '_self'}" class="partner-card" title="${p.name} - Partenaire officiel 3D Craft" rel="noopener">
-      <div class="partner-logo-wrap">
-        <img src="${p.logo}" alt="${p.name}" loading="lazy" onerror="this.onerror=null; this.src='assets/icon.png';">
-      </div>
-      <span class="partner-name">${p.name}</span>
-    </a>
-  `).join('');
+  const cardsHtml = loopList.map(p => {
+    const safeUrl = sanitizeURL(p.url);
+    const safeLogo = sanitizeURL(p.logo) || 'assets/icon.png';
+    const safeName = escapeHTML(p.name);
+    return `
+      <a href="${safeUrl || '#'}" target="${safeUrl ? '_blank' : '_self'}" class="partner-card" title="${safeName} - Partenaire officiel 3D Craft" rel="noopener">
+        <div class="partner-logo-wrap">
+          <img src="${safeLogo}" alt="${safeName}" loading="lazy" onerror="this.onerror=null; this.src='assets/icon.png';">
+        </div>
+        <span class="partner-name">${safeName}</span>
+      </a>
+    `;
+  }).join('');
 
   container.innerHTML = `
     <div class="partner-marquee-track">
@@ -632,22 +454,27 @@ function toast(m) {
 }
 
 function cardHTML(p, i = 0) {
-  const badge = p.badge ? `<span class="badge badge-${p.badge}">${p.badge === 'new' ? '✨ New' : p.badge === 'sale' ? '🔥 Sale' : '⭐ Popular'}</span>` : '';
-  const img = p.image ? `<img src="${p.image}" alt="${p.name}">` : `<span class="product-emoji">${getEmoji(p.category, i)}</span>`;
+  const safeBadge = p.badge ? `<span class="badge badge-${escapeHTML(p.badge)}">${p.badge === 'new' ? '✨ New' : p.badge === 'sale' ? '🔥 Sale' : '⭐ Popular'}</span>` : '';
+  const safeImg = sanitizeURL(p.image);
+  const safeName = escapeHTML(p.name);
+  const safeDesc = escapeHTML(p.description || '');
+  const safeId = escapeHTML(p.id);
+  const catName = escapeHTML(CATS[p.category]?.name || p.category);
+  const img = safeImg ? `<img src="${safeImg}" alt="${safeName}">` : `<span class="product-emoji">${getEmoji(p.category, i)}</span>`;
   return `
-    <div class="product-card" onclick="openProductModal('${p.id}')" title="Cliquer pour voir les détails et commander">
+    <div class="product-card" onclick="openProductModal('${safeId}')" title="Cliquer pour voir les détails et commander">
       <div class="product-img">
         ${img}
-        <div class="product-badge-wrap">${badge}</div>
+        <div class="product-badge-wrap">${safeBadge}</div>
         <div class="product-overlay-hint"><span>👁️ Détails & Commande</span></div>
       </div>
       <div class="product-info">
-        <span class="product-cat">${CATS[p.category]?.name || p.category}</span>
-        <h3 class="product-name">${p.name}</h3>
-        <p class="product-desc">${p.description || ''}</p>
+        <span class="product-cat">${catName}</span>
+        <h3 class="product-name">${safeName}</h3>
+        <p class="product-desc">${safeDesc}</p>
         <div class="product-foot">
-          <div class="product-price">${parseFloat(p.price).toFixed(2)} <span>TND</span></div>
-          <button class="product-order-btn" title="Commander" onclick="event.stopPropagation(); openProductModal('${p.id}')">🛒 Commander</button>
+          <div class="product-price">${parseFloat(p.price || 0).toFixed(2)} <span>TND</span></div>
+          <button class="product-order-btn" title="Commander" onclick="event.stopPropagation(); openProductModal('${safeId}')">🛒 Commander</button>
         </div>
       </div>
     </div>
