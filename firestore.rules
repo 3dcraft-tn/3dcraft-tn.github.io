@@ -1,0 +1,243 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // This security rules file assumes the following data structures:
+    //
+    // Collection: products
+    // Document ID: productId (string)
+    // Fields:
+    //   - id: string (optional, 1-100 chars, immutable) - Unique product identifier
+    //   - name: string (required, 1-200 chars) - Product display title
+    //   - category: string (required, 1-100 chars) - Category classification
+    //   - price: number (required, > 0 and < 1,000,000) - Unit price in TND
+    //   - badge: string (optional, max 50 chars) - Promo badge (e.g., 'new', 'promo')
+    //   - description: string (optional, max 5000 chars) - Detailed description
+    //   - image: string (optional, max 2000 chars) - Image URL or local asset path
+    //   - featured: bool (optional) - Featured product flag
+    //   - updatedAt: timestamp (optional) - Timestamp of last modification
+    //
+    // Collection: partners
+    // Document ID: partnerId (string)
+    // Fields:
+    //   - id: string (optional, 1-100 chars, immutable) - Unique partner identifier
+    //   - name: string (required, 1-200 chars) - Partner or brand name
+    //   - logo: string (required, 1-2000 chars) - URL or relative asset path to partner logo
+    //   - category: string (optional, max 100 chars) - Partner category or role
+    //   - url: string (optional, max 1000 chars) - Partner official website URL
+    //   - updatedAt: timestamp (optional) - Timestamp of last modification
+    //
+    // Collection: orders
+    // Document ID: orderId (string)
+    // Fields:
+    //   - id: string (optional, max 100 chars, immutable) - Order reference (e.g., CMD-3882)
+    //   - customerName: string (required, 1-100 chars) - Full customer name
+    //   - customerPhone: string (required, 5-30 chars) - Customer phone number
+    //   - customerAddress: string (optional, max 500 chars) - Customer delivery address
+    //   - customerNotes: string (optional, max 1000 chars) - Custom notes/instructions
+    //   - productId: string (optional, max 100 chars) - Reference product ID
+    //   - productName: string (optional, max 200 chars) - Ordered product name
+    //   - productPrice: number (optional, >= 0 and < 1,000,000) - Ordered product unit price
+    //   - productCategory: string (optional, max 100 chars) - Ordered product category
+    //   - productImage: string (optional, max 2000 chars) - Ordered product image path/URL
+    //   - quantity: number/int (required, >= 1 and <= 10000) - Ordered quantity
+    //   - totalPrice: string/number (optional, string <= 50 chars or number >= 0) - Total order price
+    //   - status: string (required, 'pending' on create; enum on update) - Order status
+    //   - date: string (optional, max 50 chars) - ISO date string of order creation
+    //   - createdAt: timestamp (optional, immutable) - Server creation timestamp
+    //   - updatedAt: timestamp (optional) - Server update timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the user is an authorized admin
+    // Currently checks authentication (request.auth != null). Can be extended to custom claims.
+    function isAdmin() {
+      return isAuthenticated();
+    }
+
+    // Validate that required fields exist on incoming resource
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate that only allowed fields are present on incoming resource
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Ensure specific fields cannot be changed on update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators: Products
+    // ===============================================================
+
+    function areImmutableProductFieldsUnchanged() {
+      return areImmutableFieldsUnchanged(['id']);
+    }
+
+    function isValidProduct(data) {
+      let allowedFields = [
+        'id', 'name', 'category', 'price', 'badge',
+        'description', 'image', 'featured', 'updatedAt'
+      ];
+      let requiredFields = ['name', 'category', 'price'];
+
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(requiredFields) &&
+             data.name is string &&
+             data.name.size() >= 1 &&
+             data.name.size() <= 200 &&
+             data.category is string &&
+             data.category.size() >= 1 &&
+             data.category.size() <= 100 &&
+             data.price is number &&
+             data.price > 0 &&
+             data.price < 1000000 &&
+             (!('id' in data) || (data.id is string && data.id.size() >= 1 && data.id.size() <= 100)) &&
+             (!('badge' in data) || (data.badge is string && data.badge.size() <= 50)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 5000)) &&
+             (!('image' in data) || (data.image is string && data.image.size() <= 2000)) &&
+             (!('featured' in data) || (data.featured is bool)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    // ===============================================================
+    // Domain Validators: Partners
+    // ===============================================================
+
+    function areImmutablePartnerFieldsUnchanged() {
+      return areImmutableFieldsUnchanged(['id']);
+    }
+
+    function isValidPartner(data) {
+      let allowedFields = ['id', 'name', 'logo', 'category', 'url', 'updatedAt'];
+      let requiredFields = ['name', 'logo'];
+
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(requiredFields) &&
+             data.name is string &&
+             data.name.size() >= 1 &&
+             data.name.size() <= 200 &&
+             data.logo is string &&
+             data.logo.size() >= 1 &&
+             data.logo.size() <= 2000 &&
+             (!('id' in data) || (data.id is string && data.id.size() >= 1 && data.id.size() <= 100)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+             (!('url' in data) || (data.url is string && data.url.size() <= 1000)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    // ===============================================================
+    // Domain Validators: Orders
+    // ===============================================================
+
+    function areImmutableOrderFieldsUnchanged() {
+      return areImmutableFieldsUnchanged(['id', 'createdAt']);
+    }
+
+    function isValidOrderBase(data) {
+      let allowedFields = [
+        'id', 'customerName', 'customerPhone', 'customerAddress', 'customerNotes',
+        'productId', 'productName', 'productPrice', 'productCategory', 'productImage',
+        'quantity', 'totalPrice', 'status', 'date', 'createdAt', 'updatedAt'
+      ];
+      let requiredFields = ['customerName', 'customerPhone', 'quantity', 'status'];
+
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(requiredFields) &&
+             data.customerName is string &&
+             data.customerName.size() >= 1 &&
+             data.customerName.size() <= 100 &&
+             data.customerPhone is string &&
+             data.customerPhone.size() >= 5 &&
+             data.customerPhone.size() <= 30 &&
+             (data.quantity is int || data.quantity is number) &&
+             data.quantity >= 1 &&
+             data.quantity <= 10000 &&
+             data.status is string &&
+             (!('customerAddress' in data) || (data.customerAddress is string && data.customerAddress.size() <= 500)) &&
+             (!('customerNotes' in data) || (data.customerNotes is string && data.customerNotes.size() <= 1000)) &&
+             (!('productId' in data) || (data.productId is string && data.productId.size() <= 100)) &&
+             (!('productName' in data) || (data.productName is string && data.productName.size() <= 200)) &&
+             (!('productPrice' in data) || (data.productPrice is number && data.productPrice >= 0 && data.productPrice < 1000000)) &&
+             (!('productCategory' in data) || (data.productCategory is string && data.productCategory.size() <= 100)) &&
+             (!('productImage' in data) || (data.productImage is string && data.productImage.size() <= 2000)) &&
+             (!('totalPrice' in data) || ((data.totalPrice is string && data.totalPrice.size() <= 50) || (data.totalPrice is number && data.totalPrice >= 0))) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 100)) &&
+             (!('date' in data) || (data.date is string && data.date.size() <= 50)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    function isValidOrderCreate(data) {
+      return isValidOrderBase(data) && data.status == 'pending';
+    }
+
+    function isValidOrderUpdate(data) {
+      let allowedStatuses = ['pending', 'processing', 'delivered', 'cancelled', 'shipped', 'completed'];
+      return isValidOrderBase(data) && (data.status in allowedStatuses);
+    }
+
+    // ===============================================================
+    // Collection Match Rules
+    // ===============================================================
+
+    // 1. Products Collection
+    match /products/{productId} {
+      // Public catalog: anyone can browse and view products
+      allow read: if true;
+
+      // Only authenticated admin staff can create, update, or remove products
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+      allow update: if isAdmin() && isValidProduct(request.resource.data) && areImmutableProductFieldsUnchanged();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Partners Collection
+    match /partners/{partnerId} {
+      // Public partner showcase: anyone can view partner badges & logos
+      allow read: if true;
+
+      // Only authenticated admin staff can create, update, or remove partners
+      allow create: if isAdmin() && isValidPartner(request.resource.data);
+      allow update: if isAdmin() && isValidPartner(request.resource.data) && areImmutablePartnerFieldsUnchanged();
+      allow delete: if isAdmin();
+    }
+
+    // 3. Orders Collection
+    match /orders/{orderId} {
+      // Privacy Protection: Only authenticated admin staff can read, search, or list orders.
+      // Customer PII (name, phone, address, notes) is strictly protected from public exposure.
+      allow read: if isAdmin();
+
+      // Public customers (unauthenticated or authenticated) can place an order with initial status 'pending'
+      allow create: if isValidOrderCreate(request.resource.data);
+
+      // Only authenticated admin staff can update order status/details or remove orders
+      allow update: if isAdmin() && isValidOrderUpdate(request.resource.data) && areImmutableOrderFieldsUnchanged();
+      allow delete: if isAdmin();
+    }
+
+    // Default Deny: All other document paths in the database are closed by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
