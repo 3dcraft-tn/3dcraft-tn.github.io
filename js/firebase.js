@@ -14,6 +14,7 @@ const firebaseConfig = {
 };
 
 let db = null;
+let auth = null;
 let isFirebaseReady = false;
 
 try {
@@ -22,8 +23,11 @@ try {
       firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
+    if (typeof firebase.auth === 'function') {
+      auth = firebase.auth();
+    }
     isFirebaseReady = true;
-    console.log('✅ Firebase Firestore connecté en temps réel (dcraft-9aa3d) !');
+    console.log('✅ Firebase Firestore & Auth connectés en temps réel (dcraft-9aa3d) !');
   }
 } catch (e) {
   console.warn('Initialisation Firebase Firestore:', e);
@@ -32,6 +36,30 @@ try {
 const CloudStore = {
   isReady() {
     return isFirebaseReady && db !== null;
+  },
+
+  // ================= AUTH =================
+  getAuth() {
+    return auth;
+  },
+
+  getCurrentUser() {
+    return auth ? auth.currentUser : null;
+  },
+
+  onAuthStateChanged(callback) {
+    if (!auth) return () => {};
+    return auth.onAuthStateChanged(callback);
+  },
+
+  async login(email, password) {
+    if (!auth) throw new Error('Module Firebase Auth non chargé.');
+    return await auth.signInWithEmailAndPassword(email, password);
+  },
+
+  async logout() {
+    if (!auth) return;
+    return await auth.signOut();
   },
 
   // ================= PRODUCTS =================
